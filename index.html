@@ -1,0 +1,2512 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>QUEEN MODE - FLR מלא</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap');
+
+    :root {
+      --bg: #120d16;
+      --panel: #1d1722;
+      --panel-soft: #2a2230;
+      --text: #fff7fb;
+      --muted: #cbb9c5;
+      --accent: #e94f9a;
+      --accent-strong: #ff2f89;
+      --teal: #38d6bd;
+      --green: #25d366;
+      --line: rgba(255,255,255,0.12);
+      --shadow: 0 20px 60px rgba(0,0,0,0.32);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Assistant', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at top right, rgba(233,79,154,0.22), transparent 32rem),
+                  linear-gradient(145deg, #120d16 0%, #261827 52%, #121f24 100%);
+      color: var(--text);
+      margin: 0;
+      padding: 18px;
+      min-height: 100vh;
+    }
+
+    button, input, textarea { font: inherit; }
+
+    .container {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      background: rgba(29,23,34,0.92);
+      padding: clamp(18px, 3vw, 34px);
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .hero { display: grid; gap: 14px; align-items: end; grid-template-columns: 1fr auto; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+    h1 { font-size: clamp(2rem, 7vw, 4rem); line-height: 0.95; margin: 0; letter-spacing: 0; color: #fff; }
+    .subtitle { color: var(--muted); font-size: 1.1rem; margin: 8px 0 0; }
+    .app-status { min-width: 180px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,0.06); color: var(--muted); text-align: center; font-weight: 700; }
+
+    .nav {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 22px 0;
+      background: rgba(255,255,255,0.06); border: 1px solid var(--line); padding: 6px; border-radius: 8px;
+      position: sticky; top: 10px; z-index: 5; backdrop-filter: blur(14px);
+    }
+
+    .nav button, .tool-btn {
+      min-height: 46px; border: 0; border-radius: 6px; cursor: pointer; color: var(--muted);
+      background: transparent; font-weight: 800; transition: all 0.16s ease;
+    }
+
+    .nav button.active, .nav button:hover, .tool-btn.active, .tool-btn:hover {
+      background: var(--accent); color: white;
+    }
+
+    .tab { display: none; }
+    .tab.active { display: block; }
+
+    .generator-panel {
+      display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin: 0 0 14px; padding: 14px; border: 1px solid var(--line); border-radius: 8px;
+      background: rgba(255,255,255,0.055);
+    }
+    .generator-panel.ai-collapsed { display: none; }
+    .ai-panel-toggle {
+      width: 100%;
+      margin: 0 0 12px;
+      min-height: 48px;
+      border: 1px solid rgba(56,216,189,0.35);
+      border-radius: 8px;
+      color: var(--text);
+      background: rgba(56,216,189,0.12);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .ai-settings { grid-template-columns: repeat(5, minmax(0, 1fr)); border-color: rgba(56,216,189,0.32); background: rgba(56,216,189,0.07); }
+
+    .field { display: grid; gap: 6px; }
+    .field.wide { grid-column: 1 / -1; }
+    .field span { color: var(--muted); font-weight: 800; font-size: 0.95rem; }
+
+    input[type="text"], input[type="password"], input[type="number"], input[type="url"], select {
+      width: 100%; min-height: 46px; border-radius: 8px; border: 1px solid var(--line);
+      background: #110f14; color: var(--text); padding: 0 12px;
+    }
+
+    .tool-btn { background: var(--panel-soft); border: 1px solid var(--line); color: var(--text); padding: 0 14px; }
+    button.main { width: 100%; min-height: 58px; padding: 15px 18px; font-size: 1.15rem; background: linear-gradient(90deg, var(--accent-strong), #b84df5); border: none; border-radius: 8px; color: white; font-weight: 800; margin: 14px 0; cursor: pointer; box-shadow: 0 14px 28px rgba(233,79,154,0.22); }
+
+    .whatsapp-btn { background: var(--green) !important; box-shadow: 0 14px 28px rgba(37,211,102,0.18) !important; }
+
+    .progress-shell { flex: 1 1 240px; min-width: 220px; }
+    .progress-label { display: flex; justify-content: space-between; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+    .progress-track { height: 10px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; }
+    .progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent), var(--teal)); transition: width 0.2s ease; }
+
+    .question { margin: 14px 0; padding: 16px; background: rgba(255,255,255,0.055); border-radius: 8px; border: 1px solid var(--line); }
+    .question h3 { margin: 0 0 10px; font-size: 1.1rem; }
+    label { padding: 13px 14px; margin: 8px 0; background: rgba(0,0,0,0.24); border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 1.03rem; min-height: 50px; display: flex; align-items: center; gap: 10px; }
+    label:hover, label:has(input:checked) { border-color: rgba(233,79,154,0.65); background: rgba(233,79,154,0.16); }
+
+    textarea { width: 100%; min-height: 190px; border-radius: 8px; border: 1px solid var(--line); padding: 14px; background: #110f14; color: var(--text); resize: vertical; direction: rtl; }
+
+    .protocol { background: rgba(0,0,0,0.22); padding: clamp(16px, 3vw, 26px); border-radius: 8px; border: 1px solid var(--line); line-height: 1.8; }
+    .rule { background: rgba(255,255,255,0.06); padding: 14px; margin: 10px 0; border-radius: 8px; border-right: 4px solid var(--accent); font-size: 1.03rem; }
+    .empty-state { color: var(--muted); text-align: center; padding: 24px; border: 1px dashed var(--line); border-radius: 8px; }
+
+    @media (max-width: 720px) {
+      body { padding: 10px; }
+      .hero { grid-template-columns: 1fr; }
+      .nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .generator-panel, .ai-settings { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ====================== מסך פתיחה ====================== -->
+  <div id="splashScreen" style="position:fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle at center, #2a1a35, #120d16); display:flex; align-items:center; justify-content:center; z-index:9999; flex-direction:column; color:white; text-align:center;">
+    <div style="font-size:4.5rem; margin-bottom:20px;">👑</div>
+    <h1 style="font-size:2.8rem; margin:0; letter-spacing:2px;">לימור המלכה</h1>
+    <p style="margin:10px 0 40px; font-size:1.3rem; color:#ff9ed4;">FLR מלא - שליטה אישית</p>
+    
+    <div style="width:180px; height:3px; background:linear-gradient(90deg, transparent, #ff6b9d, transparent); margin-bottom:30px;"></div>
+    
+    <p style="font-size:1.1rem; color:#ccc;">טוען...</p>
+  </div>
+
+  <!-- ====================== תוכן ראשי ====================== -->
+  <div class="container" id="mainApp" style="display:none;">
+    
+    <header class="hero">
+      <div>
+        <h1>לימור המלכה</h1>
+        <p class="subtitle">FLR מלא - לוח שליטה אישי</p>
+      </div>
+      <div class="app-status" id="appStatus">מוכן לעבודה</div>
+    </header>
+
+  <div class="nav">
+  <button type="button" onclick="openTab(0)" class="active">🏠 דשבורד</button>
+  <button type="button" onclick="openTab(1)">שאלון</button>
+  <button type="button" onclick="openTab(2)">מטלות</button>
+  <button type="button" onclick="openTab(3)">פקודות</button>
+  <button type="button" onclick="openTab(4)">טיזינג</button>
+  <button type="button" onclick="openTab(5)">פרוטוקול</button>
+  <button type="button" onclick="openTab(6)">לוח שנה 👑</button>
+</div>
+
+<!-- Tab 0 - דשבורד ראשי -->
+<div id="tab0" class="tab active">
+  <div style="text-align:center; margin-bottom:30px;">
+    <h1 style="font-size:2.8rem; margin:0;">👑 לימור המלכה</h1>
+    <p style="color:var(--accent); font-size:1.3rem; margin:8px 0 0;">לוח שליטה אישי</p>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:18px;">
+    
+    <!-- כרטיס Streak -->
+    <div class="question" style="text-align:center; background:rgba(74,0,34,0.4); border:1px solid #ff6b9d;">
+      <h3>Streak נוכחי</h3>
+      <div id="dashStreak" style="font-size:3.8rem; font-weight:900; color:#ffd700;">0</div>
+      <div>ימים ללא רשות</div>
+    </div>
+
+    <!-- כרטיס ציון ללימור -->
+    <div class="question" style="text-align:center; background:rgba(255,215,0,0.1); border:1px solid #ffd700;">
+      <h3>ציון ללימור</h3>
+      <div id="dashScore" style="font-size:3.8rem; font-weight:900; color:#ffd700;">0</div>
+      <div>נקודות שליטה</div>
+    </div>
+
+    <!-- כרטיס מטלות להיום -->
+    <div class="question">
+      <h3>מטלות להיום</h3>
+      <div id="dashTasks" style="line-height:1.8; min-height:80px; color:#ddd;"></div>
+    </div>
+
+    <!-- כרטיס פקודה אחרונה -->
+    <div class="question">
+      <h3>פקודה אחרונה</h3>
+      <div id="dashLastCommand" style="font-size:1.1rem; color:#ff9ed4; min-height:80px;"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:30px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+    <button onclick="openTab(2)" class="main" style="flex:1; max-width:280px;">📋 מטלות</button>
+    <button onclick="openTab(3)" class="main" style="flex:1; max-width:280px;">🎲 פקודות</button>
+    <button onclick="openTab(4)" class="main" style="flex:1; max-width:280px;">💋 טיזינג</button>
+    <button onclick="openTab(6)" class="main" style="flex:1; max-width:280px;">📅 לוח שנה</button>
+  </div>
+</div>
+
+    <!-- AI Settings -->
+    <button type="button" class="ai-panel-toggle" onclick="toggleAiPanel('aiSettingsPanel', this)">הצג חיבור AI</button>
+    <div class="generator-panel ai-settings ai-collapsed" id="aiSettingsPanel">
+      <p class="hint">חיבור AI: <strong>Grok (xAI)</strong> מומלץ • Ollama • כל API תואם OpenAI</p>
+      <label class="field wide">
+        <span>כתובת API</span>
+        <input type="url" id="aiEndpoint" placeholder="https://api.x.ai/v1/chat/completions">
+      </label>
+      <label class="field">
+        <span>Model</span>
+        <input type="text" id="aiModel" placeholder="grok-3-mini" value="grok-3-mini">
+      </label>
+      <label class="field">
+        <span>API key</span>
+        <input type="password" id="aiApiKey" placeholder="xai-...">
+      </label>
+      <label class="field">
+        <span>Max tokens</span>
+        <input type="number" id="aiMaxTokens" min="64" max="8192" step="64" value="1500">
+      </label>
+      <label class="field">
+        <span>Creativity</span>
+        <input type="number" id="aiTemperature" min="0" max="2" step="0.1" value="0.92">
+      </label>
+      <label class="field wide">
+        <span>מקור יצירת הודעות</span>
+        <select id="generatorMode" onchange="saveAiSettings()">
+          <option value="auto" selected>אוטומטי: חיצוני ואז פנימי אם יש תקלה</option>
+          <option value="external">AI חיצוני בלבד</option>
+          <option value="internal">מחולל פנימי בלבד</option>
+        </select>
+      </label>
+      <div style="grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="tool-btn" onclick="setGrokPreset()">Grok (מומלץ)</button>
+        <button type="button" class="tool-btn" onclick="saveAiSettings()">שמור חיבור</button>
+        <button type="button" class="tool-btn" onclick="testAIConnection()">בדוק חיבור</button>
+      </div>
+    </div>
+
+    <!-- Tab 1 -->
+    <div id="tab1" class="tab active">
+      <div class="toolbar">
+        <div class="progress-shell">
+          <div class="progress-label">
+            <span>התקדמות שאלון</span>
+            <span id="progressText">0/0</span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+        </div>
+        <button type="button" class="tool-btn" onclick="resetAnswers()">איפוס תשובות</button>
+      </div>
+      <form id="flrForm"></form>
+      <button type="button" class="main" onclick="calculateResults()">יצירת פרוטוקול אישי לאבי</button>
+    </div>
+
+    <!-- Tab 2 -->
+<div id="tab2" class="tab">
+  <div class="toolbar">
+    <h2>בחרי מטלות</h2>
+    <button type="button" class="tool-btn" onclick="toggleAllTasks(true)">סמן הכל</button>
+    <button type="button" class="tool-btn" onclick="toggleAllTasks(false)">נקה הכל</button>
+  </div>
+
+  <!-- הוספת מטלה ידנית -->
+  <div style="display: flex; gap: 8px; margin: 12px 0; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid var(--line);">
+    <input type="text" id="manualTaskInput" placeholder="הקלידי מטלה חדשה..." style="flex: 1; min-height: 46px;">
+    <button type="button" class="tool-btn" onclick="addManualTask()" style="min-width: 140px;">+ הוסף מטלה</button>
+  </div>
+
+  <button type="button" class="ai-panel-toggle" onclick="toggleAiPanel('tasksAiPanel', this)">הצג מחולל AI למטלות</button>
+
+      <div class="generator-panel ai-collapsed" id="tasksAiPanel">
+        <label class="field wide"><span>מה להדגיש בהודעה?</span><input type="text" id="tasksPrompt" placeholder="לדוגמה: בלי תירוצים, לדווח לפני השינה"></label>
+        <label class="field"><span>סגנון</span><select id="tasksStyle"><option value="human" selected>אנושי וחם</option><option value="strict">חד וברור</option><option value="royal">מלכותי</option><option value="playful">משחקי</option></select></label>
+        <label class="field"><span>אורך</span><select id="tasksLength"><option value="short">קצר</option><option value="medium" selected>בינוני</option><option value="long">מפורט</option></select></label>
+        <label class="field"><span>דדליין</span><select id="tasksDeadline"><option value="evening" selected>עד הערב</option><option value="bedtime">לפני השינה</option><option value="now">עכשיו</option></select></label>
+        <label class="field"><span>דיווח</span><select id="tasksReport"><option value="short" selected>דיווח קצר</option><option value="detailed">מפורט</option><option value="photo">תמונה</option><option value="none">ללא</option></select></label>
+      </div>
+      <div id="tasksContainer"></div>
+      <button type="button" class="main" onclick="generateHumanTasksMessage()">AI יצירת הודעת מטלות</button>
+      <button type="button" class="main" onclick="generateMessage()">יצירת הודעה לוואטסאפ</button>
+      <button type="button" class="main whatsapp-btn" onclick="sendTasksToWhatsApp()">שלח בוואטסאפ</button>
+      <button type="button" class="tool-btn" onclick="copyTextFrom('messageOutput')">העתק</button>
+      <textarea id="messageOutput" readonly></textarea>
+    </div>
+
+ <!-- Tab 3 - פקודות -->
+<div id="tab3" class="tab">
+  <div class="toolbar">
+    <h2>פקודות 👑</h2>
+  </div>
+
+  <div style="display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:35px 0;">
+    <button onclick="giveRandomRemoteCommand()" class="main" style="padding:17px 34px; font-size:1.13rem;">
+      📱 תני לי פקודה מרחוק
+    </button>
+    <button onclick="giveRandomBoldCommand()" class="main" style="padding:17px 34px; font-size:1.13rem; background:#c22;">
+      🔥 תני פקודה נועזת
+    </button>
+  </div>
+
+  <div id="randomCommandDisplay" style="margin:30px 15px; padding:32px; background:rgba(0,0,0,0.5); border-radius:16px; min-height:170px; display:none; align-items:center; justify-content:center; text-align:center; font-size:1.25rem; line-height:1.7; border:1px solid rgba(255,107,157,0.3);"></div>
+
+  <div style="text-align:center; margin-top:20px;">
+    <button onclick="sendCurrentCommandToWhatsApp()" class="main whatsapp-btn" style="padding:14px 40px; font-size:1.1rem;">
+      📱 שלח פקודה בוואטסאפ
+    </button>
+  </div>
+</div>
+
+<!-- Tab 4 - טיזינג -->
+<div id="tab4" class="tab">
+  <h2>הודעות טיזינג</h2>
+
+  <button type="button" class="ai-panel-toggle" onclick="toggleAiPanel('teasingAiPanel', this)">הצג מחולל AI לטיזינג</button>
+  
+  <div class="generator-panel ai-collapsed" id="teasingAiPanel">
+    <label class="field wide">
+      <span>מה ה-AI צריך לשלב בהודעה?</span>
+      <input type="text" id="aiPrompt" placeholder="לדוגמה: הוא באמצע יום עבודה, להזכיר לו לבצע מטלה">
+    </label>
+    <label class="field">
+      <span>סגנון</span>
+      <select id="aiStyle">
+        <option value="playful">משחקי</option>
+        <option value="commanding">מצווה</option>
+        <option value="elegant">אלגנטי</option>
+        <option value="mysterious">מסתורי</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>עוצמה</span>
+      <select id="aiIntensity">
+        <option value="gentle">עדין</option>
+        <option value="medium" selected>בינוני</option>
+        <option value="hot">חם</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>אורך</span>
+      <select id="aiLength">
+        <option value="short">קצר</option>
+        <option value="medium" selected>בינוני</option>
+        <option value="long">ארוך</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>חתימה</span>
+      <select id="aiSignature">
+        <option value="queen" selected>המלכה שלך</option>
+        <option value="limor">לימור</option>
+        <option value="none">ללא</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="toolbar" style="margin:25px 0 15px 0;">
+    <button type="button" class="tool-btn" onclick="setTeaseTone('soft')">רך</button>
+    <button type="button" class="tool-btn" onclick="setTeaseTone('bold')">נועז</button>
+    <button type="button" class="tool-btn" onclick="setTeaseTone('royal')">מלכותי</button>
+  </div>
+
+  <button type="button" class="main" onclick="generateAIMessage()">AI יצירת הודעה מותאמת</button>
+  <button type="button" class="main" onclick="generateTeasingMessage()">יצירת הודעת טיזינג</button>
+  <button type="button" class="main whatsapp-btn" onclick="sendTeasingToWhatsApp()">שלח טיזינג בוואטסאפ</button>
+  <button type="button" class="tool-btn" onclick="copyTextFrom('teasingOutput')">העתק הודעה</button>
+  
+  <textarea id="teasingOutput" readonly style="min-height:240px; margin-top:12px;"></textarea>
+</div>
+
+    <div id="tab5" class="tab">
+      <button type="button" class="ai-panel-toggle" onclick="toggleAiPanel('protocolAiPanel', this)">הצג מחולל AI לפרוטוקול</button>
+      <div class="generator-panel ai-collapsed" id="protocolAiPanel">
+        <label class="field">
+          <span>סגנון פרוטוקול</span>
+          <select id="protocolStyle">
+            <option value="warm" selected>אנושי וחם</option>
+            <option value="direct">ישיר וברור</option>
+            <option value="royal">מלכותי</option>
+            <option value="contract">כמו הסכם אישי</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>אורך</span>
+          <select id="protocolLength">
+            <option value="short">קצר</option>
+            <option value="medium" selected>בינוני</option>
+            <option value="long">מפורט</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>פתיחה</span>
+          <select id="protocolOpening">
+            <option value="avi" selected>אבי, תקרא טוב</option>
+            <option value="dear">אבי היקר</option>
+            <option value="formal">הפרוטוקול שלנו</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>סיום</span>
+          <select id="protocolEnding">
+            <option value="queen" selected>המלכה שלך</option>
+            <option value="limor">לימור</option>
+            <option value="none">ללא חתימה</option>
+          </select>
+        </label>
+      </div>
+      <button type="button" class="main" onclick="generateHumanProtocol()">AI כתיבת פרוטוקול בסגנון אנושי</button>
+      <button type="button" class="tool-btn" onclick="copyProtocol()">העתק פרוטוקול</button>
+      <div id="fullProtocol" class="protocol empty-state">הפרוטוקול יופיע כאן אחרי מילוי השאלון.</div>
+    </div>
+
+<!-- Tab 6 - לוח שנה -->
+<div id="tab6" class="tab">
+  <div class="toolbar" style="margin-bottom: 16px; display:flex; justify-content:space-between; align-items:center;">
+    <h2>לוח תקופות מניעה 👑</h2>
+    <span id="calendarTitle" style="font-weight:600; color:var(--accent);"></span>
+  </div>
+
+  <div style="background:rgba(255,255,255,0.06); padding:14px; border-radius:12px; margin-bottom:20px; text-align:center; font-size:0.95rem;">
+    לחצי על יום = התחלה 🔒<br>
+    לחצי על יום אחר = סיום 🔓
+  </div>
+
+<canvas id="progressChart" width="500" height="180" style="width:100%; background:#111; border-radius:10px;"></canvas>
+
+  <div id="calendar" style="background:rgba(0,0,0,0.35); padding:16px; border-radius:12px; border:1px solid var(--line); margin-bottom:24px;"></div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:16px; margin-bottom:24px;">
+    <div class="question" style="text-align:center;">
+      <h3>תקופה ארוכה ביותר</h3>
+      <div id="currentStreak" style="font-size:3.4rem; font-weight:900;">0</div>
+      <div>ימים</div>
+    </div>
+    <div class="question" style="text-align:center;">
+      <h3>ציון ללימור</h3>
+      <div id="limorScore" style="font-size:3.4rem; font-weight:900; color:#ffd700;">0</div>
+    </div>
+    <div class="question" style="text-align:center;">
+      <h3>סטטיסטיקה</h3>
+      <div id="stats" style="line-height:1.8;"></div>
+    </div>
+  </div>
+
+  <div id="periodsList" style="margin:20px 0;"></div>
+
+  <button onclick="resetDenialCalendar()" class="main" style="margin-top:20px; background:#c00; width:100%; padding:14px;">
+    איפוס כל הנתונים
+  </button>
+</div>
+
+  <!-- התראות יומיות -->
+  <div style="margin-top: 20px; padding: 16px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--line); text-align: center;">
+    <label style="display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 1.1rem; cursor: pointer;">
+      <input type="checkbox" id="dailyNotifications" onchange="toggleDailyNotifications()">
+      <span>הפעל התראות יומיות 👑</span>
+    </label>
+    <small style="color: var(--muted);">התראה בכל יום בשעה 20:00 על סטטוס המניעה</small>
+  </div>
+
+<script>
+    // ====================== מסך פתיחה ======================
+    function showSplashScreen() {
+      const splash = document.getElementById("splashScreen");
+      const mainApp = document.getElementById("mainApp");
+
+      // מעבר אוטומטי אחרי 2.8 שניות
+      setTimeout(() => {
+        splash.style.transition = "opacity 0.8s ease";
+        splash.style.opacity = "0";
+        
+        setTimeout(() => {
+          splash.style.display = "none";
+          mainApp.style.display = "block";
+          openTab(1); // פותח את טאב השאלון
+        }, 800);
+      }, 2800);
+    }
+
+    // ====================== אתחול ======================
+    window.onload = function() {
+      loadAiSettings();
+      createForm();
+      createTasks();
+      setTeaseTone(currentTeasingTone);
+      
+      // הפעלת מסך הפתיחה
+      showSplashScreen();
+    };
+  </script>
+  
+<script>
+    let currentProtocolText = "";
+    let currentProtocolRules = [];
+    let currentProtocolScore = 0;
+    let currentCommandText = "";
+    let currentTeasingTone = "bold";
+    const STORAGE_KEY = "queenModeState";
+    const AI_SETTINGS_KEY = "queenModeAiSettings";
+    const generationHistory = {};
+
+    const limorBrandLanguage = {
+      identity: [
+        "לימור היא מלכה ביתית, חמה, מדויקת וסמכותית.",
+        "היא לא צועקת כדי להוביל. היא אומרת מעט, ברור, ובטון שמרגישים בו החלטה.",
+        "היא משלבת רכות עם גבולות. יש בה אינטליגנציה, הומור שקט ושליטה רגועה.",
+        "היא מדברת אל אבי באופן אישי, כאילו היא מכירה את הקצב, ההרגלים והנקודות שבהן הוא דוחה דברים."
+      ],
+      rules: [
+        "עברית טבעית, שיחתית, בלי ניסוחים משפטיים ובלי קלישאות.",
+        "כל הודעה צריכה להישמע כאילו נכתבה עכשיו, לא כמו תבנית.",
+        "להעדיף משפטים קצרים ובעלי משקל על פני נאומים.",
+        "לא להשתמש באותן פתיחות שוב ושוב.",
+        "לא להמציא איומים, כאב, פגיעה או כפייה. המסגרת תמיד פרטית, בוגרת ובהסכמה.",
+        "אפשר להיות סמכותית, אבל לא משפילה בצורה גסה.",
+        "לכתוב לאבי ישירות, בגוף שני, עם תחושה של נוכחות."
+      ],
+      textures: [
+        "חיוך קטן מאחורי המילים",
+        "שקט שמבהיר מי מובילה",
+        "דאגה ביתית שמתחפשת לפקודה",
+        "משחקיות מרוסנת",
+        "דיוק של מישהי ששמה לב לפרטים",
+        "חום שלא מבטל דרישה",
+        "תחושת טקס קטנה בתוך יום רגיל",
+        "קצב איטי ובטוח"
+      ],
+      openers: {
+        tasks: [
+          "אבי, אני רוצה שהיום הזה יהיה מסודר יותר.",
+          "אני עושה לך רגע סדר, כדי שלא תצטרך לנחש מה חשוב לי.",
+          "תקרא את זה לאט, ואז תתחיל לבצע.",
+          "יש כמה דברים שאני רוצה לראות גמורים היום.",
+          "אני רוצה ממך יום פשוט, נקי ומדויק."
+        ],
+        command: [
+          "עצור רגע ותעבור לביצוע.",
+          "אני נותנת לך עכשיו הוראה אחת ברורה.",
+          "תקשיב טוב, זה לא מסובך.",
+          "יש משהו קטן שאני רוצה שתעשה עכשיו.",
+          "תן לי לראות שאתה יודע לפעול בלי למשוך זמן."
+        ],
+        tease: [
+          "יש לי מחשבה קטנה עליך עכשיו.",
+          "בא לי להשאיר לך משהו בראש להמשך היום.",
+          "תעצור רגע ותקרא את זה לאט.",
+          "אני אוהבת לדעת שמילה אחת שלי משנה לך את הקצב.",
+          "יש לי חיוך קטן, ואתה כנראה תבין למה."
+        ],
+        protocol: [
+          "אבי, זה לא מסמך יבש. זה סדר חדש.",
+          "אני רוצה שהפרוטוקול הזה יהיה ברור, אישי וקל לביצוע.",
+          "תקרא טוב. המטרה היא שתדע בדיוק איך להתנהל מולי.",
+          "זה המקום שבו הציפיות שלי הופכות להרגלים שלך."
+        ]
+      },
+      verbs: [
+        "תתחיל",
+        "תסיים",
+        "תדווח",
+        "תזכור",
+        "תתיישר",
+        "תשים לב",
+        "תבחר",
+        "תבצע",
+        "תשאיר לי",
+        "תראה לי"
+      ],
+      closers: {
+        soft: [
+          "תעשה את זה יפה, ואני אשים לב.",
+          "אני רוצה להרגיש שהקשבת לי באמת.",
+          "תן לי סיבה לחייך כשאבדוק את זה.",
+          "תהיה טוב בשבילי היום."
+        ],
+        clear: [
+          "בסיום תשלח לי עדכון קצר וברור.",
+          "בלי להסביר יותר מדי. פשוט לבצע.",
+          "אני מצפה לזה גמור, מסודר ונקי.",
+          "תענה לי כשזה בוצע."
+        ],
+        royal: [
+          "המלכה שלך שמה לב לפרטים.",
+          "תתנהל כמו מי שמבין מי מובילה היום.",
+          "אני בוחרת את הקצב. אתה מבצע אותו יפה.",
+          "כשתסיים, תחכה להוראה הבאה."
+        ]
+      },
+      useCases: {
+        tasks: [
+          "מטלות בית",
+          "דדליין עדין",
+          "דיווח בסוף",
+          "בניית מומנטום",
+          "סדר וניקיון בלי דרמה"
+        ],
+        command: [
+          "פקודה מיידית",
+          "משימה קצרה",
+          "החזרת קשב",
+          "משמעת יומיומית",
+          "פעולה אחת שאי אפשר לדחות"
+        ],
+        tease: [
+          "הודעה קצרה באמצע היום",
+          "רמז לפני הערב",
+          "משחקיות מרחוק",
+          "שימור מתח רגוע",
+          "תזכורת מי מובילה"
+        ],
+        protocol: [
+          "סיכום כללים",
+          "הסכם התנהלות ביתי",
+          "תרגום תשובות השאלון להרגלים",
+          "מסמך אישי לאבי",
+          "מסגרת ברורה להמשך"
+        ]
+      },
+      avoid: [
+        "לא לפתוח כל הודעה ב'אבי' אם זה לא נחוץ.",
+        "לא להשתמש ברשימות ארוכות אלא אם המשתמש ביקש מטלות.",
+        "לא לכתוב בשפה רובוטית כמו 'בהתאם לבקשתך'.",
+        "לא לחזור על 'המלכה שלך' בכל הודעה.",
+        "לא להפוך כל טקסט לחריף. לפעמים כוח מגיע משקט."
+      ]
+    };
+
+    const safeStorage = {
+      get(key) {
+        try {
+          if (typeof localStorage !== "undefined") {
+            return JSON.parse(localStorage.getItem(key)) || {};
+          }
+        } catch (error) {
+          console.warn(error);
+        }
+        return {};
+      },
+      set(key, data) {
+        try {
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem(key, JSON.stringify(data));
+            return true;
+          }
+        } catch (error) {
+          console.warn(error);
+        }
+        return false;
+      }
+    };
+
+    function setStatus(text) {
+      document.getElementById("appStatus").textContent = text;
+    }
+
+    function toggleAiPanel(panelId, button) {
+      const panel = document.getElementById(panelId);
+      const isOpening = panel.classList.toggle("ai-collapsed") === false;
+      button.textContent = button.textContent
+        .replace(isOpening ? "הצג" : "הסתר", isOpening ? "הסתר" : "הצג");
+      setStatus(isOpening ? "פאנל AI נפתח" : "פאנל AI הוסתר");
+    }
+
+    function getSavedState() {
+      return safeStorage.get(STORAGE_KEY);
+    }
+
+    function getAiSettings() {
+      return safeStorage.get(AI_SETTINGS_KEY);
+    }
+
+    function readAiSettingsFromForm() {
+      return {
+        endpoint: document.getElementById("aiEndpoint").value.trim(),
+        model: document.getElementById("aiModel").value.trim(),
+        apiKey: document.getElementById("aiApiKey").value.trim(),
+        maxTokens: Number(document.getElementById("aiMaxTokens").value) || 1500,
+        temperature: Number(document.getElementById("aiTemperature").value) || 0.92,
+        generatorMode: document.getElementById("generatorMode").value || "auto"
+      };
+    }
+
+    function loadAiSettings() {
+      const settings = getAiSettings();
+      document.getElementById("aiEndpoint").value = settings.endpoint || "https://api.x.ai/v1/chat/completions";
+      document.getElementById("aiModel").value = settings.model || "grok-3-mini";
+      document.getElementById("aiApiKey").value = settings.apiKey || "";
+      document.getElementById("aiMaxTokens").value = settings.maxTokens || 1500;
+      document.getElementById("aiTemperature").value = settings.temperature ?? 0.92;
+      document.getElementById("generatorMode").value = settings.generatorMode || "auto";
+    }
+
+    function saveAiSettings() {
+      const settings = readAiSettingsFromForm();
+      const saved = safeStorage.set(AI_SETTINGS_KEY, settings);
+      setStatus(saved ? "✅ חיבור AI נשמר" : "⚠️ לא ניתן לשמור, אבל ההגדרות זמינות עד רענון הדף");
+    }
+
+    function setGrokPreset() {
+      document.getElementById("aiEndpoint").value = "https://api.x.ai/v1/chat/completions";
+      document.getElementById("aiModel").value = "grok-3-mini";
+      document.getElementById("aiTemperature").value = 0.92;
+      document.getElementById("aiMaxTokens").value = 1500;
+      document.getElementById("generatorMode").value = "external";
+      saveAiSettings();
+      setStatus("✅ Grok הוגדר");
+    }
+
+    async function testAIConnection() {
+      const settings = readAiSettingsFromForm();
+      if (!settings.endpoint || !settings.model) {
+        alert("מלאי כתובת API ו-Model");
+        return;
+      }
+
+      setStatus("בודק חיבור AI...");
+      try {
+        const headers = { "Content-Type": "application/json" };
+        if (settings.apiKey) headers.Authorization = `Bearer ${settings.apiKey}`;
+
+        const response = await fetch(settings.endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            model: settings.model,
+            messages: [{ role: "user", content: "שלום" }],
+            max_tokens: 10,
+            temperature: 0.2
+          })
+        });
+
+        if (response.ok) {
+          setStatus("✅ חיבור AI תקין");
+          alert("✅ חיבור תקין!");
+        } else {
+          const errorText = await response.text();
+          setStatus(`❌ שגיאת AI ${response.status}`);
+          alert(`❌ שגיאה ${response.status}\n${errorText.slice(0, 300)}`);
+        }
+      } catch (error) {
+        console.warn(error);
+        setStatus("❌ חיבור AI נכשל");
+        alert("❌ חיבור נכשל. בדוק כתובת API, מפתח, CORS או חיבור אינטרנט.");
+      }
+    }
+
+    function getSelectedOptionLabel(selectId) {
+      const select = document.getElementById(selectId);
+      return select.options[select.selectedIndex]?.textContent.trim() || select.value;
+    }
+
+    function pickBrandItems(items, count, key) {
+      return pickMany(items, count, `brand-${key}-${Date.now()}`);
+    }
+
+    function buildBrandLanguageBrief(useCase) {
+      const brand = limorBrandLanguage;
+      const openerPool = brand.openers[useCase] || brand.openers.tease;
+      const useCasePool = brand.useCases[useCase] || [];
+      const closeTone = useCase === "tease" ? "soft" : useCase === "command" ? "clear" : "royal";
+
+      return [
+        "שפת המותג של לימור:",
+        `זהות: ${pickBrandItems(brand.identity, 2, `${useCase}-identity`).join(" ")}`,
+        `מרקם רגשי: ${pickBrandItems(brand.textures, 3, `${useCase}-texture`).join(", ")}.`,
+        `שימושים רלוונטיים: ${pickBrandItems(useCasePool, Math.min(3, useCasePool.length), `${useCase}-uses`).join(", ")}.`,
+        `פתיחות אפשריות להשראה בלבד, לא להעתקה: ${pickBrandItems(openerPool, 3, `${useCase}-openers`).join(" | ")}.`,
+        `פעלים אופייניים: ${pickBrandItems(brand.verbs, 5, `${useCase}-verbs`).join(", ")}.`,
+        `סיומות אפשריות להשראה בלבד: ${pickBrandItems(brand.closers[closeTone], 3, `${useCase}-closers`).join(" | ")}.`,
+        `כללי כתיבה: ${pickBrandItems(brand.rules, 4, `${useCase}-rules`).join(" ")}`,
+        `להימנע: ${pickBrandItems(brand.avoid, 3, `${useCase}-avoid`).join(" ")}`
+      ].join("\n");
+    }
+
+    async function callExternalAI(userPrompt) {
+      const settings = readAiSettingsFromForm();
+      if (!settings.endpoint || !settings.model) return "";
+
+      const headers = { "Content-Type": "application/json" };
+      if (settings.apiKey) headers.Authorization = `Bearer ${settings.apiKey}`;
+
+      const response = await fetch(settings.endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: settings.model,
+          messages: [
+            {
+              role: "system",
+              content: [
+                "את לימור. את כותבת בעברית טבעית, מקורית, אישית וברורה.",
+                "המטרה היא להלחין הודעה חדשה בכל פעם מתוך שפת מותג, לא להעתיק משפטים מוכנים.",
+                "שמרי על מסגרת פרטית, בוגרת ובהסכמה. הימנעי מפגיעה, כפייה, איומים או ניסוח גס מדי.",
+                "השתמשי בפרטים שהמשתמש נתן ובשפת המותג המצורפת כדי ליצור טקסט חי, לא נוסחה."
+              ].join(" ")
+            },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: Math.min(2, Math.max(0, settings.temperature)),
+          max_tokens: Math.min(8192, Math.max(64, settings.maxTokens))
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`AI API error ${response.status}: ${errorText.slice(0, 300)}`);
+      }
+
+      const data = await response.json();
+      return (data.choices?.[0]?.message?.content || data.message?.content || data.response || "").trim();
+    }
+
+    async function tryExternalAI(prompt, outputHandler, fallbackHandler) {
+      const settings = readAiSettingsFromForm();
+      const mode = settings.generatorMode || "auto";
+
+      if (mode === "internal") {
+        fallbackHandler();
+        setStatus("נוצר במחולל הפנימי");
+        return false;
+      }
+
+      if (!settings.endpoint || !settings.model) {
+        if (mode === "external") {
+          alert("בחרת AI חיצוני בלבד, אבל חסרים כתובת API או Model");
+          setStatus("חסר חיבור AI חיצוני");
+          return false;
+        }
+
+        fallbackHandler();
+        setStatus("אין חיבור חיצוני, נוצר במחולל הפנימי");
+        return false;
+      }
+
+      try {
+        setStatus("יוצר הודעה דרך AI חיצוני...");
+        const text = await callExternalAI(prompt);
+        if (!text) throw new Error("Empty AI response");
+        outputHandler(text);
+        setStatus("AI חיצוני יצר הודעה מקורית");
+        return true;
+      } catch (error) {
+        console.warn(error);
+        if (mode === "external") {
+          alert("AI חיצוני נכשל. בדוק חיבור, API key, שם Model או CORS.");
+          setStatus("AI חיצוני נכשל");
+          return false;
+        }
+
+        fallbackHandler();
+        setStatus("AI חיצוני לא זמין, נוצרה הודעה מקומית");
+        return false;
+      }
+    }
+
+    function buildTasksAiPrompt(selectedTasks) {
+      return [
+        buildBrandLanguageBrief("tasks"),
+        "כתוב הודעת וואטסאפ מקורית בעברית.",
+        "הדוברת היא לימור. השתמש בשפת המותג כדי ליצור ניסוח חדש, לא תבנית.",
+        `סגנון: ${getSelectedOptionLabel("tasksStyle")}.`,
+        `אורך מבוקש: ${getSelectedOptionLabel("tasksLength")}.`,
+        `דדליין: ${getSelectedOptionLabel("tasksDeadline")}.`,
+        `דיווח: ${getSelectedOptionLabel("tasksReport")}.`,
+        `דגש מיוחד: ${document.getElementById("tasksPrompt").value.trim() || "אין"}.`,
+        `מטלות: ${selectedTasks.join(", ")}.`,
+        "חבר הודעה אחת שלמה. אפשר לשלב רשימת מטלות קצרה אם זה מתאים. אל תצטט את שפת המותג עצמה."
+      ].join("\n");
+    }
+
+    function buildCommandAiPrompt() {
+      return [
+        buildBrandLanguageBrief("command"),
+        "כתוב פקודה אחת מקורית בעברית, קצרה עד בינונית, לשליחה בוואטסאפ.",
+        "הטון צריך להיות סמכותי, רגוע ואישי, במסגרת יחסים פרטיים ובהסכמה.",
+        `סגנון: ${getSelectedOptionLabel("commandStyle")}.`,
+        `עוצמה: ${getSelectedOptionLabel("commandIntensity")}.`,
+        `זמן: ${getSelectedOptionLabel("commandDuration")}.`,
+        `דיווח: ${getSelectedOptionLabel("commandReport")}.`,
+        `דגש מיוחד: ${document.getElementById("commandPrompt").value.trim() || "אין"}.`,
+        "חבר פקודה אחת חיה ומדויקת. אל תצטט את שפת המותג עצמה."
+      ].join("\n");
+    }
+
+    function buildTeaseAiPrompt() {
+      return [
+        buildBrandLanguageBrief("tease"),
+        "כתוב הודעת טיזינג מקורית בעברית.",
+        "הדוברת היא לימור. המסר אישי, אינטליגנטי, משחקי, בשליטה ובהסכמה.",
+        `סגנון: ${getSelectedOptionLabel("aiStyle")}.`,
+        `עוצמה: ${getSelectedOptionLabel("aiIntensity")}.`,
+        `אורך: ${getSelectedOptionLabel("aiLength")}.`,
+        `חתימה: ${getSelectedOptionLabel("aiSignature")}.`,
+        `דגש מיוחד: ${document.getElementById("aiPrompt").value.trim() || "אין"}.`,
+        "חבר הודעה אחת חדשה לגמרי. אל תצטט את שפת המותג עצמה."
+      ].join("\n");
+    }
+
+    function saveState() {
+      const answers = {};
+      document.querySelectorAll('#flrForm input[type="radio"]:checked').forEach(input => {
+        answers[input.name] = input.value;
+      });
+
+      const tasks = Array.from(document.querySelectorAll('#tasksContainer input[type="checkbox"]')).map(input => input.checked);
+      safeStorage.set(STORAGE_KEY, { answers, tasks });
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const answered = document.querySelectorAll('#flrForm input[type="radio"]:checked').length;
+      const total = questions.length;
+      const percent = total ? Math.round((answered / total) * 100) : 0;
+      document.getElementById("progressText").textContent = `${answered}/${total}`;
+      document.getElementById("progressBar").style.width = `${percent}%`;
+      setStatus(answered === total ? "השאלון מלא" : `${percent}% מהשאלון הושלם`);
+    }
+
+    const questions = [
+      {id:1, q:"מי שוטף כלים?", options:["אבי תמיד", "אני", "אני מחליטה"], answers:["אבי ישטוף את כל הכלים אחרי כל ארוחה.", "אני אחליט מי שוטף כלים.", "אני אשטוף את הכלים."]},
+      {id:2, q:"מי מקפל כביסה?", options:["אבי תמיד", "אני", "אני מחליטה"], answers:["אבי יקפל ויסדר את כל הכביסה.", "אני אחליט מי מקפל כביסה.", "אני אקפל את הכביסה."]},
+      {id:3, q:"ניקיון יומי של הבית", options:["אבי תמיד", "אני", "אני מחליטה"], answers:["אבי יבצע ניקיון יומי מלא של הבית.", "אני אחליט על לוח הניקיון.", "אני אבצע את הניקיון."]},
+      {id:4, q:"החלפת מצעים", options:["אבי תמיד", "אני", "אני מחליטה"], answers:["אבי יחליף את המצעים פעם בשבוע.", "אני אחליט מתי מחליפים מצעים.", "אני אחליף את המצעים."]},
+      {id:5, q:"פינוי אשפה", options:["אבי תמיד", "אני", "אני מחליטה"], answers:["אבי יפנה את האשפה בכל יום.", "אני אחליט מי מפנה אשפה.", "אני אפנה את האשפה."]},
+      {id:6, q:"שטיפת רצפה", options:["אבי תמיד", "אבי עירום + אני מפקחת", "אני", "אני מחליטה"], answers:["אבי ישטוף את הרצפה עירום תחת פיקוחי.", "אבי ישטוף את הרצפה.", "אני אשטוף את הרצפה.", "אני אחליט על שטיפת הרצפה."]},
+      {id:7, q:"כלל עירום", options:["אבי עירום תמיד", "רק כשאני מצווה", "לא"], answers:["אבי יהיה עירום בבית בכל עת שאדרוש.", "אבי יהיה עירום רק כשאני מצווה.", "ללא כלל עירום."]},
+      {id:8, q:"שליטה באורגזמות", options:["שליטה מלאה + כלוב נעילה", "לפעמים", "ללא"], answers:["אבי לא יורשה לגעת בעצמו או להגיע לאורגזמה ללא רשותי.", "שליטה חלקית באורגזמות.", "ללא שליטה באורגזמות."]},
+      {id:9, q:"שרות מיני", options:["חובה יומית", "כשאני רוצה", "לפעמים", "לא"], answers:["אבי יספק לי שירות מיני בכל עת שאדרוש.", "אבי יספק שירות מיני כשאני רוצה.", "לפעמים.", "ללא שירות מיני."]},
+      {id:10, q:"מסאז'", options:["חובה יומית", "כשאני רוצה", "לא"], answers:["אבי יעניק לי מסאז' בכל ערב.", "אבי יעניק לי מסאז' כשאני רוצה.", "ללא מסאז'."]},
+      {id:11, q:"ליקוק רקטום", options:["חובה יומית", "כשאני רוצה", "לא"], answers:["אבי ילקק לי את הרקטום בכל פעם שארצה.", "אבי ילקק לי את הרקטום כשאני רוצה.", "ללא."]},
+      {id:12, q:"בקשת רשות לפני מגע", options:["כן תמיד", "כשאני מחליטה", "לא"], answers:["אבי חייב לבקש רשות ממני לפני כל מגע.", "אבי חייב לבקש רשות ממני לפני כל מגע כשאני מחליטה.", "ללא."]},
+      {id:13, q:"טקס כניסה למיטה", options:["כריעה + נשיקת רגליים", "כריעה + 'שלום מלכה'", "ללא"], answers:["אבי יבצע טקס כניסה למיטה: כריעה ונשיקת רגליי.", "אבי יאמר 'שלום מלכה' בכריעה.", "ללא טקס."]},
+      {id:14, q:"השכמת בוקר אוראלית", options:["חובה יומית", "כשאני רוצה", "לא"], answers:["אבי יעשה לי מין אוראלי כל בוקר.", "אבי יעיר אותי עם מין אוראלי כשאני ארצה.", "ללא."]}, 
+          {id:15, q:"ניקיון פות אחרי אורגזמה", options:["חובה", "כשאני רוצה", "ללא"], answers:["אבי ינקה תמיד את הפות שלי אחרי שאני גומרת.", "אבי ינקה את הפות שלי כשאני רוצה.", "ללא."]},
+      {id:16, q:"Chastity (כלוב נעילה)", options:["לפרקי זמן ארוכים", "כשאני רוצה", "כעונש"], answers:["אבי יישא כלוב נעילה לפי הוראותיי (לפרקי זמן ארוכים).", "אבי יישא כלוב כשאני רוצה.", "כעונש בלבד."]},
+      {id:17, q:"עונשים מועדפים", options:["שלילת אורגזמה + כלוב", "עבודות בית נוספות", "אני מחליטה"], answers:["שלילת אורגזמה + כלוב + עבודות בית.", "עבודות בית נוספות.", "עונשים יינתנו לפי שיקול דעתי."]}
+    ];
+
+    function createForm() {
+      const form = document.getElementById("flrForm");
+      form.innerHTML = "";
+      const saved = getSavedState().answers || {};
+
+      questions.forEach(q => {
+        const div = document.createElement("div");
+        div.className = "question";
+
+        let html = `<h3>${q.q}</h3>`;
+        q.options.forEach((opt, i) => {
+          const checked = saved[`q${q.id}`] === String(i) ? "checked" : "";
+          html += `<label><input type="radio" name="q${q.id}" value="${i}" ${checked}> ${opt}</label>`;
+        });
+
+        div.innerHTML = html;
+        form.appendChild(div);
+      });
+
+      form.addEventListener("change", saveState);
+      updateProgress();
+    }
+
+    function calculateResults() {
+      let rules = [];
+      let answered = 0;
+      let controlPoints = 0;
+      let protocolText = "👑 פרוטוקול FLR רשמי - רמת שליטה ";
+
+      questions.forEach(q => {
+        const selected = document.querySelector(`input[name="q${q.id}"]:checked`);
+        if (selected) {
+          answered++;
+          const val = parseInt(selected.value, 10);
+          controlPoints += q.options.length - val;
+          if (q.answers[val]) rules.push(q.answers[val]);
+        }
+      });
+
+      if (answered < questions.length) {
+        alert("❗ אנא עני על כל השאלות");
+        return;
+      }
+
+      const maxPoints = questions.reduce((sum, q) => sum + q.options.length, 0);
+      const score = Math.max(1, Math.round((controlPoints / maxPoints) * 10));
+      protocolText += `${score}/10\n\n`;
+
+      let html = `
+        <h2>👑 פרוטוקול FLR רשמי</h2>
+        <p style="text-align:center; font-size:1.35em; color:#ffccff;">רמת שליטה: <strong>${score}/10</strong></p>
+        <div class="section-title">הוראות מחייבות</div>
+      `;
+
+      rules.forEach(rule => {
+        html += `<div class="rule">${rule}</div>`;
+        protocolText += `• ${rule}\n`;
+      });
+
+      protocolText += "\nכללי:\n";
+      protocolText += "• החלטותיי סופיות ואין עליהן ערעור.\n";
+      protocolText += "• אי ציות יגרור עונש מיידי.\n";
+      protocolText += "• אני המלכה שלך. אתה המשרת שלי.";
+
+      currentProtocolText = protocolText;
+      currentProtocolRules = rules;
+      currentProtocolScore = score;
+
+      html += `
+        <div class="section-title">כללי</div>
+        <div class="rule">החלטותיי סופיות ואין עליהן ערעור.</div>
+        <div class="rule">אי ציות יגרור עונש מיידי.</div>
+        <div class="rule"><strong>אני המלכה שלך. אתה המשרת שלי.</strong></div>
+        <button class="main whatsapp-btn" onclick="sendProtocolToWhatsApp()">
+          📱 שלח פרוטוקול בוואטסאפ
+        </button>
+      `;
+
+      document.getElementById("fullProtocol").innerHTML = html;
+      document.getElementById("fullProtocol").classList.remove("empty-state");
+      saveState();
+      openTab(5);
+      setStatus("פרוטוקול נוצר");
+    }
+
+    function sendProtocolToWhatsApp() {
+      if (!currentProtocolText) {
+        alert("קודם צרי פרוטוקול");
+        return;
+      }
+
+      sendToWhatsApp(currentProtocolText);
+    }
+
+    const humanProtocolParts = {
+      opening: {
+        avi: "אבי, תקרא את זה טוב וברוגע.",
+        dear: "אבי היקר, זה הפרוטוקול שלנו מעכשיו.",
+        formal: "זה הפרוטוקול האישי שלנו, והוא נכתב כדי שיהיה ברור לשנינו איך הדברים מתנהלים."
+      },
+      style: {
+        warm: [
+          "אני רוצה שזה יהיה ברור, אבל גם אישי: אני מובילה את הדינמיקה בינינו, ואתה מצופה להיות קשוב, נוכח וממושמע.",
+          "הבחירות בשאלון מגדירות את הדרך שבה אני רוצה שתתנהל, לא כרשימה יבשה בלבד אלא כהבנה יומיומית של המקום שלך מולי.",
+          "אני רוצה שהפרוטוקול הזה ירגיש ברור מספיק לביצוע ואישי מספיק כדי שתזכור למה הוא נכתב.",
+          "הדבר החשוב מבחינתי הוא עקביות: שתדע מה מצופה ממך גם כשאני לא מזכירה."
+        ],
+        direct: [
+          "הכללים כאן פשוטים: אני מחליטה, אתה מבצע, ובסיום אתה מדווח כשצריך.",
+          "אין צורך בפרשנות מסובכת. כל סעיף כאן הוא הוראה ברורה להתנהלות שלך.",
+          "הפרוטוקול הזה קובע מסגרת: מה עושים, איך מגיבים, ומה לא פתוח למשא ומתן.",
+          "אני רוצה סדר, ביצוע ודיווח. כל השאר משני."
+        ],
+        royal: [
+          "מהרגע שהפרוטוקול הזה נקבע, אתה מתנהל מתוך כבוד לסמכות שלי ומתוך הבנה שאני קובעת את הקצב.",
+          "אני מצפה ממך לנאמנות, שירות, דיוק, ושקט פנימי של מי שיודע מי מובילה.",
+          "המסגרת הזאת מזכירה לך שהמקום שלי מוביל, והמקום שלך הוא להקשיב, לבצע ולכבד.",
+          "זה לא רק סדר יום. זו דרך שבה אתה מראה לי מי קובעת את הטון."
+        ],
+        contract: [
+          "המסמך הזה מרכז את ההסכמות והציפיות בינינו בצורה ברורה.",
+          "המטרה היא ליצור סדר: מה באחריותך, מה נמצא בהחלטתי, ומה נחשב ציות טוב.",
+          "הפרוטוקול נועד להפוך את הציפיות למעשיות, ברורות וקלות לבדיקה.",
+          "כל סעיף כאן הוא חלק מהמסגרת שלנו, והוא נועד למנוע בלבול או התחמקות."
+        ]
+      },
+      bridge: [
+        "אני מצפה שתתייחס לזה כאל מסגרת חיה, לא כאל טקסט חד פעמי.",
+        "מה שחשוב לי הוא לא רק שתכיר את הכללים, אלא שתפעל לפיהם בלי למשוך אותי לתזכורות חוזרות.",
+        "הביצוע שלך צריך להראות לי שהבנת את הרוח של הפרוטוקול, לא רק את המילים.",
+        "כשיש ספק, אתה בוחר באפשרות המכבדת יותר, המסודרת יותר והממושמעת יותר.",
+        "המסגרת הזאת אמורה להפוך את היום-יום שלנו לברור יותר, חד יותר, ושלי יותר."
+      ],
+      closing: [
+        "אני מצפה שתזכור שהפרוטוקול הזה לא נועד להישאר על המסך בלבד. הוא צריך להופיע במעשים שלך, בתשובות שלך ובדרך שבה אתה מגיב אליי.",
+        "אם משהו לא ברור, אתה שואל בכבוד. אם קיבלת הוראה, אתה מבצע. ואם ביצעת, אתה מדווח בצורה נקייה ומסודרת.",
+        "אני רוצה לראות פחות הסברים ויותר ביצוע. פחות ניחושים ויותר הקשבה.",
+        "הדרך שבה תעמוד בפרוטוקול הזה תספר לי הרבה יותר מכל הבטחה.",
+        "הפרוטוקול הזה הוא נקודת התחלה. ההתנהגות שלך היא מה שיהפוך אותו לאמיתי."
+      ],
+      length: {
+        short: 5,
+        medium: 9,
+        long: 14
+      },
+      ending: {
+        queen: "המלכה שלך",
+        limor: "לימור",
+        none: ""
+      }
+    };
+
+    function generateHumanProtocol() {
+      if (!currentProtocolRules.length) {
+        alert("קודם צרי פרוטוקול מהשאלון");
+        return;
+      }
+
+      const style = document.getElementById("protocolStyle").value;
+      const length = document.getElementById("protocolLength").value;
+      const opening = document.getElementById("protocolOpening").value;
+      const ending = document.getElementById("protocolEnding").value;
+      const maxRules = humanProtocolParts.length[length];
+      const selectedRules = currentProtocolRules.slice(0, maxRules);
+      const brandProtocolLine = pickRandom(limorBrandLanguage.openers.protocol, "local-brand-protocol-opener");
+      const brandTextureLine = `השפה של הפרוטוקול צריכה לשמור על ${pickMany(limorBrandLanguage.textures, 2, "local-brand-protocol-textures").join(" ועל ")}.`;
+
+      const paragraphs = [
+        humanProtocolParts.opening[opening],
+        brandProtocolLine,
+        pickRandom(humanProtocolParts.style[style], `protocol-style-${style}`),
+        brandTextureLine,
+        `רמת השליטה שנקבעה היא ${currentProtocolScore}/10, וזה אומר שההתנהלות היומיומית שלך צריכה להיות עקבית, מכבדת וברורה.`,
+        pickRandom(humanProtocolParts.bridge, "protocol-bridge"),
+        "בפועל, אלה הדברים שאני מצפה ממך לקחת ברצינות:"
+      ];
+
+      const ruleText = selectedRules.map((rule, index) => `${index + 1}. ${rule}`).join("\n");
+      const closing = pickMany(humanProtocolParts.closing, length === "long" ? 3 : 2, "protocol-closing");
+      const signature = humanProtocolParts.ending[ending];
+
+      currentProtocolText = `${paragraphs.join("\n\n")}\n\n${ruleText}\n\n${closing.join("\n\n")}${signature ? `\n\n${signature}` : ""}`;
+
+      const html = `
+        <h2>פרוטוקול בסגנון אנושי</h2>
+        ${paragraphs.map(text => `<p>${text}</p>`).join("")}
+        <div class="section-title">הכללים שנבחרו</div>
+        ${selectedRules.map(rule => `<div class="rule">${rule}</div>`).join("")}
+        ${closing.map(text => `<p>${text}</p>`).join("")}
+        ${signature ? `<p><strong>${signature}</strong></p>` : ""}
+        <button class="main whatsapp-btn" onclick="sendProtocolToWhatsApp()">שלח פרוטוקול בוואטסאפ</button>
+      `;
+
+      document.getElementById("fullProtocol").innerHTML = html;
+      document.getElementById("fullProtocol").classList.remove("empty-state");
+      setStatus("AI כתב פרוטוקול אנושי");
+    }
+
+    function copyProtocol() {
+      copyText(currentProtocolText);
+    }
+
+  function sendToWhatsApp(text) {
+  try {
+    const encodedText = encodeURIComponent(text);
+    const waURL = `https://wa.me/?text=${encodedText}`;
+    window.open(waURL, "_blank");
+    setStatus("📱 נפתח וואטסאפ");
+  } catch (e) {
+    console.error(e);
+    alert("שגיאה בפתיחת וואטסאפ");
+  }
+}
+
+    function sendTasksToWhatsApp() {
+      const textarea = document.getElementById("messageOutput").value;
+      if (!textarea) {
+        alert("קודם צור הודעת מטלות");
+        return;
+      }
+
+      sendToWhatsApp(textarea);
+    }
+
+    function sendCommandToWhatsApp() {
+      if (!currentCommandText) {
+        alert("קודם תני פקודה");
+        return;
+      }
+
+      sendToWhatsApp(`👑 פקודה מידיית:\n\n${currentCommandText}`);
+    }
+
+    const allTasks = [
+      "שטיפת כלים",
+      "קיפול כביסה",
+      "ניקיון יומי של הבית",
+      "החלפת מצעים",
+      "פינוי אשפה",
+      "שטיפת רצפה",
+      "עיסוי רגליים",
+      "שרות מיני",
+      "ניקוי המטבח",
+      "טקס כניסה למיטה",
+      "ניקוי הרצפה של חדר השינה על ארבע לפני כניסה למיטה"
+    ];
+
+   function createTasks() {
+  loadCustomTasks(); // טעינה בכל פעם
+  const container = document.getElementById("tasksContainer");
+  container.innerHTML = "";
+  const savedState = getSavedState();
+  const savedTasks = savedState.tasks || [];
+
+  // מטלות קבועות
+  allTasks.forEach((task, i) => {
+    const div = document.createElement("div");
+    div.className = "task-item";
+    const checked = savedTasks[i] === undefined || savedTasks[i] ? "checked" : "";
+    div.innerHTML = `<label><input type="checkbox" id="t${i}" ${checked}> ${task}</label>`;
+    container.appendChild(div);
+  });
+
+  // מטלות ידניות
+  customTasks.forEach((task, idx) => {
+    const globalIndex = allTasks.length + idx;
+    const div = document.createElement("div");
+    div.className = "task-item";
+    const checked = savedTasks[globalIndex] !== false ? "checked" : "";
+    div.innerHTML = `
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="t${globalIndex}" ${checked}> 
+        ${task}
+        <span onclick="removeCustomTask(${idx}); event.stopImmediatePropagation();" style="margin-right:auto; color:#ff6b6b; font-size:0.9rem; cursor:pointer;">×</span>
+      </label>`;
+    container.appendChild(div);
+  });
+
+  container.addEventListener("change", saveState);
+}
+
+    function toggleAllTasks(checked) {
+      document.querySelectorAll('#tasksContainer input[type="checkbox"]').forEach(input => {
+        input.checked = checked;
+      });
+      saveState();
+      setStatus(checked ? "כל המטלות סומנו" : "כל המטלות נוקו");
+    }
+// משתנה למטלות ידניות
+let customTasks = [];
+
+// פונקציה להוספת מטלה ידנית
+function addManualTask() {
+  const input = document.getElementById("manualTaskInput");
+  const text = input.value.trim();
+  
+  if (!text) {
+    alert("נא להקליד מטלה");
+    return;
+  }
+
+  if (customTasks.includes(text)) {
+    alert("מטלה זו כבר קיימת");
+    input.value = "";
+    return;
+  }
+
+  customTasks.push(text);
+  saveCustomTasks();
+  createTasks(); // רענון הרשימה
+  input.value = "";
+  setStatus("✅ מטלה ידנית נוספה");
+}
+
+// שמירה וטעינה של מטלות ידניות
+function saveCustomTasks() {
+  try {
+    localStorage.setItem("queenCustomTasks", JSON.stringify(customTasks));
+  } catch(e) {}
+}
+
+function loadCustomTasks() {
+  try {
+    const saved = localStorage.getItem("queenCustomTasks");
+    if (saved) customTasks = JSON.parse(saved);
+  } catch(e) {
+    customTasks = [];
+  }
+}
+
+function removeCustomTask(idx) {
+  if (confirm("למחוק מטלה זו?")) {
+    customTasks.splice(idx, 1);
+    saveCustomTasks();
+    createTasks();
+    setStatus("מטלה הוסרה");
+  }
+}
+
+    function generateMessage() {
+      let msg = "👑 הודעה מהמלכה:\n\nמטלות להיום:\n\n";
+      const selectedTasks = document.querySelectorAll('#tasksContainer input[type="checkbox"]:checked');
+
+      if (!selectedTasks.length) {
+        alert("בחרי לפחות מטלה אחת");
+        return;
+      }
+
+      selectedTasks.forEach((cb, i) => {
+        msg += `${i + 1}. ${cb.parentElement.textContent.trim()}\n`;
+      });
+
+      msg += "\nבצע הכל עד הערב.\nאי ביצוע = עונש.";
+      document.getElementById("messageOutput").value = msg;
+      setStatus("הודעת מטלות נוצרה");
+    }
+
+    const humanTasksParts = {
+      style: {
+        human: [
+          "אבי, אני רוצה שהיום יהיה מסודר ונעים יותר, אז אלה המטלות שלך.",
+          "אני שולחת לך את זה בצורה ברורה כדי שתדע בדיוק מה אני מצפה ממך היום.",
+          "תעבור על המטלות ברוגע ותבצע אותן יפה, אחת אחרי השנייה.",
+          "היום אני רוצה לראות סדר דרך המעשים שלך, לא דרך הבטחות.",
+          "קח את הרשימה הזאת כמו רגע של תשומת לב אליי ואל הבית.",
+          "אני רוצה יום מסודר יותר, ואתה האדם שאחראי לגרום לזה לקרות."
+        ],
+        strict: [
+          "אלה המטלות שלך להיום. אין דילוגים ואין תירוצים.",
+          "תקרא טוב ותבצע לפי הסדר. אני מצפה לתוצאה מלאה.",
+          "היום אני רוצה ביצוע נקי, מהיר, וברור.",
+          "כל סעיף ברשימה נחשב. אל תבחר לעצמך מה חשוב ומה לא.",
+          "אני רוצה לראות משמעת דרך ביצוע מדויק, לא דרך מילים.",
+          "תעבור סעיף סעיף, תסיים, ואז תבדוק שלא פספסת כלום."
+        ],
+        royal: [
+          "המלכה שלך קבעה את המטלות להיום, ואתה מבצע אותן בכבוד ובדיוק.",
+          "היום אתה משרת דרך מעשים פשוטים וברורים. אלה ההוראות שלך.",
+          "אני מצפה לשירות שקט, מסודר, וראוי לאישור שלי.",
+          "הבית הוא המקום שבו אתה מראה לי שאתה יודע לשרת גם בלי שאעמוד לידך.",
+          "הוראות היום ניתנות ממני, והביצוע צריך לכבד את המקום שלי.",
+          "אתה מקבל רשימה מהמלכה שלך, ואתה מחזיר תוצאה שאני יכולה להיות מרוצה ממנה."
+        ],
+        playful: [
+          "יש לך רשימת משימות קטנה ממני. תהיה טוב ותגרום לי לחייך.",
+          "בוא נראה כמה יפה אתה יודע לבצע כשאני נותנת לך רשימה.",
+          "קיבלת מטלות, ואני כבר מחכה לראות כמה ממושמע תהיה היום.",
+          "יש לי מצב רוח לבדוק כמה יפה אתה יודע להשקיע בשבילי.",
+          "תחשוב על זה כמשחק קטן: כל מטלה מקרבת אותך לאישור שלי.",
+          "אני נותנת לך רשימה, ואתה נותן לי סיבה להיות מרוצה."
+        ]
+      },
+      deadline: {
+        evening: "הכל צריך להיות גמור עד הערב.",
+        bedtime: "הכל צריך להיות גמור לפני השינה.",
+        now: "תתחיל עכשיו, בלי לדחות.",
+        custom: "תתייחס לדגש שכתבתי לך ותפעל לפיו."
+      },
+      report: {
+        short: "בסיום תשלח לי דיווח קצר: בוצע.",
+        detailed: "בסיום תשלח לי דיווח מסודר על כל מה שסיימת.",
+        photo: "בסיום תשלח לי תמונת ביצוע ודיווח קצר.",
+        none: ""
+      },
+      encouragement: [
+        "אני אשים לב לאיכות, לא רק לזה שסימנת שסיימת.",
+        "ביצוע טוב מתחיל בזה שאתה לא מחכה לתזכורת נוספת.",
+        "אם תעשה את זה יפה, אני אדע בדיוק כמה התאמצת.",
+        "תן לי להרגיש שההוראות שלי ממשיכות לעבוד גם כשאני לא לידך.",
+        "הדבר החשוב הוא שתסיים בצורה שאפשר לסמוך עליה.",
+        "אני רוצה לקבל ממך תחושה של סדר, אחריות וציות טוב."
+      ],
+      length: {
+        short: 4,
+        medium: 8,
+        long: 20
+      }
+    };
+
+    function getSelectedTaskTexts() {
+      return Array.from(document.querySelectorAll('#tasksContainer input[type="checkbox"]:checked'))
+        .map(cb => cb.parentElement.textContent.trim());
+    }
+
+    async function generateHumanTasksMessage() {
+      const selectedTasks = getSelectedTaskTexts();
+      if (!selectedTasks.length) {
+        alert("בחרי לפחות מטלה אחת");
+        return;
+      }
+
+      await tryExternalAI(
+        buildTasksAiPrompt(selectedTasks),
+        text => { document.getElementById("messageOutput").value = text; },
+        () => generateLocalHumanTasksMessage(selectedTasks)
+      );
+    }
+
+    function generateLocalHumanTasksMessage(selectedTasks = getSelectedTaskTexts()) {
+      if (!selectedTasks.length) {
+        alert("בחרי לפחות מטלה אחת");
+        return;
+      }
+
+      const prompt = document.getElementById("tasksPrompt").value.trim();
+      const style = document.getElementById("tasksStyle").value;
+      const length = document.getElementById("tasksLength").value;
+      const deadline = document.getElementById("tasksDeadline").value;
+      const report = document.getElementById("tasksReport").value;
+      const maxTasks = humanTasksParts.length[length];
+      const visibleTasks = selectedTasks.slice(0, maxTasks);
+
+      const taskLines = visibleTasks.map((task, index) => `${index + 1}. ${task}`).join("\n");
+      const hiddenCount = selectedTasks.length - visibleTasks.length;
+      const extraLine = hiddenCount > 0 ? `\nועוד ${hiddenCount} מטלות שסומנו ברשימה.` : "";
+      const promptLine = prompt ? `\n\nדגש מיוחד ממני: ${prompt}.` : "";
+      const reportLine = humanTasksParts.report[report] ? `\n\n${humanTasksParts.report[report]}` : "";
+      const brandOpener = pickRandom(limorBrandLanguage.openers.tasks, "local-brand-tasks-opener");
+      const brandTexture = pickRandom(limorBrandLanguage.textures, "local-brand-tasks-texture");
+      const brandCloser = pickRandom(limorBrandLanguage.closers[style === "royal" ? "royal" : "clear"], "local-brand-tasks-closer");
+
+      const msg = `👑 הודעה מהמלכה:\n\n${brandOpener}\n\n${pickRandom(humanTasksParts.style[style], `tasks-style-${style}`)}${promptLine}\n\nהמשימות שלך:\n${taskLines}${extraLine}\n\n${humanTasksParts.deadline[deadline]}\n\n${pickRandom(humanTasksParts.encouragement, "tasks-encouragement")}\n\nאני רוצה בזה ${brandTexture}, לא דרמה.\n\n${brandCloser}${reportLine}`;
+
+      document.getElementById("messageOutput").value = msg;
+      setStatus("AI יצר הודעת מטלות אנושית");
+    }
+
+// ====================== פקודות - פקודה נועזת ======================
+    const cmds = [
+       "תשב לידי ערום על המיטה ותשאל אותי בעדינות איך אני רוצה להתחיל",
+      "תעסה לי את הכתפיים והגב במשך 10 דקות בקצב שאני אבחר",
+      "תניח לי כוס מים ליד המיטה",
+      "תבקש ממני רשות לפני שאתה מתקרב יותר, ותחכה לתשובה שלי",
+      "תשאל אותי איפה נעים לי שתיגע, ותעקוב אחרי ההנחיה שלי",
+      "תנשק את הידיים והצוואר שלי לאט, רק כל עוד אני מסמנת שזה נעים לי",
+      "תכין את הכריות והשמיכה כך שיהיה לי נוח לגמרי",
+      "תעסה לי את כפות הרגליים בעדינות ותבדוק מדי פעם אם הלחץ נכון",
+      "תכרע ברך ותנשק לי את הרגליים 3 דקות",
+      "תביא לי לשתות ותשרת אותי על הברכיים",
+      "שכב על המיטה - אני רוצה לשבת לך על הפנים",
+      "תשים את הכלוב עכשיו ותמסור לי את המפתח",
+      "תעסה לי את הרגליים 20 דקות",
+      "תלקק לי את כפות הרגליים",
+      "תתפשט ותעמוד בפינה עד שאגיד לך",
+      "תשכב ערום על הרצפה עד שאגיד לך",
+      "תרקוד עירום בשבילי",
+      "תבקש רשות בקול רם לפני שאתה נוגע בי",
+      "תעסה לי את הגב 20 דקות",
+      "תלקק לי את הרקטום עד שאגיד לך",
+      "תיכנס איתי למקלחת ותשטוף אותי",
+      "תתפשט עכשיו ותלקק לי את כפות הרגליים עם הלשון",
+      "תכרע ברך מולי ותבקש רשות ללקק את הרקטום שלי",
+      "תלקק לי בין האצבעות של הרגליים עד שיהיו נקיות לגמרי",
+      "תעמוד ערום על ארבע עד שאומר לך",
+      "תנשק לי את התחת 20 פעמים ותודה לי על כל נשיקה",
+      "תשכב עירום ליד המיטה ותחכה עד שאני צריכה אותך",
+      "תעסה לי את הישבן 15 דקות בלי להפסיק",
+      "תלקק לי את הכוס לאט עד שאגיד לך לעצור",
+      "תתפשט ותזחל אליי על הבטן",
+      "תלקק את הפות שלי אחרי שאני גומרת",
+      "תעמוד בפינה עם הידיים על הראש ותחשוף את הזין שלך",
+      "תכרע ברך ותגיד לי בקול רם 'אני העבד שלך'",
+      "תנשק לי את כפות הרגליים ותודה לי על כל נשיקה שאתה לא ראוי לה",
+      "תשכב עירום על הרצפה ותפתח את הרגליים",
+      "תבקש רשות בקול רם להתפשט",
+      "תזחל אליי ותתחנן שאני אתן לך ללקק לי את הרקטום",
+      "תלקק לי את הרגליים ותגיד כמה אתה אוהב את זה",
+      "תעמוד בפינה ערום עם הראש למטה",
+      "תתפשט עכשיו, תעמוד מולי ותראה לי את הזין הקטן שלך",
+      "תחזיק את הזין הקטן שלך בין האצבעות ותראה לי כמה הוא זעיר",
+      "תשכב על הגב, תפתח רגליים ותציג לי את הזין הקטן שלך",
+      "תשכב על הרצפה ותראה לי איך אתה מנסה לזיין את הרצפה עם הזין הזעיר שלך",
+      "תשים את הכלוב עכשיו, תמסור לי את המפתח ותגיד 'אני שלך לגמרי'",
+      "תשים את הכלוב, תזחל אליי ותנשק לי את כפות הרגליים",
+      "תעמוד בפינה עם הכלוב עליך ותחזיק את הידיים על הראש",
+      "תכרע ברך עם הכלוב על הזין ותתחנן שאשמור את המפתח חודש",
+      "תשים את הכלוב, תצלם אותו ותשלח לי עם ההודעה 'נעול בשביל המלכה'",
+      "תשים את הכלוב עכשיו, תנשק אותו ותגיד 'תודה מלכה שהזין שלי ננעל'",
+      "תשים את הכלוב, תנעל אותו ותראה לי כמה הזין הקטן שלך נראה מגוחך בתוכו",
+      "תכרע ברך, תשים את הכלוב ותגיד לי 'הזין הקטן שלי ננעל כמו שמגיע לו'",
+      "תשים את הכלוב על הזין הקטן שלך עכשיו ותמסור לי את המפתח כמו עבד טוב",
+      "תעמוד עירום בפינה ותחכה לי 10 דקות",
+      "תתפשט ותעשה 20 שכיבות סמיכה תוך כדי שאתה אומר 'אני עבד של לימור'",
+      "תצלם את עצמך עירום ותשלח לי",
+      "תעסה לי את הרגליים ותגיד לי תודה על כל דקה",
+      "תחבק לי את הרגליים ותישאר ככה עד שאגיד",
+      "תשכב על המיטה ואל תיגע בעצמך",
+      "תלקק לי את הרקטום לאט ומסור",
+      "תעשה לי מין אוראלי עד שאגיד לך להפסיק",
+      "תשים את הכלוב ותביא לי את המפתח",
+      "תשכב על הגב ותחזיק את הרגליים באוויר",
+      "תתפשט עכשיו ותכרע ברך",
+      "תעמוד מולי עירום ותחכה להוראות הבאות",
+     "תלקק לי את הרגליים עד שאגיד לך להפסיק",
+     "תשכב על הרצפה ותחזיק את הרגליים למעלה",
+     "המלכה דורשת עיסוי מלא של הגוף עכשיו",
+     "תבקש רשות בקול רם לפני כל מגע",
+     "תתפשט, תעמוד מולי ותראה לי כמה אתה קשה",
+    "תשכב על הגב, תחזיק את הרגליים למעלה ותראה לי את הכל",
+    "תלטף את עצמך לאט אבל אל תעז לגמור",
+    "תלקק את האצבעות שלך ותגיד לי איך אתה רוצה ללקק אותי",
+    "תעשה לי סטריפטיז איטי",
+    "תשכב עירום על הרצפה ותתחנן שאשב לך על הפנים",
+    "תלטף את הזין שלך ותגיד לי 'זה שייך למלכה' 10 פעמים",
+    "תלטף את עצמך 5 דקות אבל אל תעז לגמור",
+    "תשכב עירום, תלטף את עצמך לאט ותתחנן בקול רם",
+    "תעשה לי מין אוראלי ותישאר קשה בלי לגמור",
+    "תכתוב 15 פעמים 'האורגזמה שלי שייכת ללימור'",
+    "תשכב על הגב, תחזיק את הזין ותספור עד 100 בלי לזוז",
+    "תלקק אותי עד שאני גומרת — ואתה לא",
+    "תשים את הכלוב ותישן איתו הלילה",
+    "תלטף את עצמך עד שאתה על הקצה ואז תפסיק",
+    "תבקש ממני רשות לגמור",
+     "תתפשט עכשיו, תעמוד מולי ותראה לי איך הזין הקטן שלך בכלוב",
+    "תזחל אליי על ארבע, תרים את התחת ותגיד 'אני חור זמין למלכה'",
+    "תשכב על הגב, תפשק רגליים כמו כלבה ותראה לי הכל",
+    "תלקק לי את התחת עמוק בזמן שאני קוראת לך 'העבד שלי'",
+    "תשכב על הרצפה, תרים את הרגליים ותחזיק אותן בזמן שאני צוחקת עליך",
+    "תלטף את הזין שלך דרך הכלוב ותבקש ממני שחרור",
+    "תגיד לי 15 פעמים 'אני העבד של לימור' בזמן שאתה מלקק אותי",
+    "תשכב כמו תינוק, תרים רגליים ותראה לי את החור שלך",
+    "תלקק לי את הרגליים ואת התחת ואז תודה לי על כל ליקוק",
+    "תעמוד מולי עירום, תחזיק את הכלוב ותגיד 'זה לא שלי, זה של המלכה'",
+    "תשכב על הבטן, תרים את התחת גבוה ואני אדפק אותך חזק",
+    "תלקק אותי עד שאני גומרת ואז תודה לי שאתה לא גומר",
+    "תשכב על הגב, תפתח את הפה ואני אשתמש בך כמו בצעצוע",
+    "תשכב על הרצפה ותתחנן שאשב לך על הפנים",
+    "תעמוד מולי, תלטף את עצמך ותתחנן שאני אוריד לך את הכלוב",
+    "תשכב על הגב, תרים רגליים ואני אגע בך עם הרגל בלי לתת לך לגמור",
+    "תכרע ברך ערום לפניי ותגיד לי בקול רם 'אני העבד של המלכה לימור'",
+    "תשכב עירום, תפשק רגליים ואני אצלם אותך",
+    "תלקק לי את הרגליים בזמן שאני דורכת על הזין הנעול שלך",
+    "תשכב על הבטן ותתחנן שאני אדפק אותך עם החגורה",
+    "תשכב על הגב, תחזיק את הרגליים ותראה לי כמה אתה רוצה אותי",
+    "תעמוד עירום בפינה, תחזיק את הידיים על הראש ותחכה לי",
+    "תשכב על הרצפה ותתחנן שאני אוריד לך את הכלוב רק כדי להתגרות בך"
+    ];
+
+// רשימת פקודות מרחוק
+const remoteCommands = [
+  "צלם את הזין שלך מכמה זוויות ושלח לי",
+  "שלח לי תמונה עירום על הברכיים",
+  "הקלט את עצמך מאונן במשך 2 דקות ושלח",
+  "שלח לי וידאו שלך מתחנן לשחרור",
+  "צלם תמונה מקרוב של הביצים שלך",
+  "עמוד עירום מול המראה וצלם תמונה מלאה",
+  "הקלט את עצמך אומר 'אני המשרת של לימור' 10 פעמים",
+  "שלח תמונה עם כלוב chastity נעול",
+  "כתוב 'קטן מדי' על הזין וצלם",
+  "שלח וידאו שלך רוקד עירום",
+  "שלח תמונה שלך ערום עם ידיים מאחורי הגב",
+  "תצלם תמונה של הזין הקטן שלך ותשלח לי עם הכיתוב 'רכוש של המלכה'",
+  "תשים את הכלוב, תנעל אותו ותשלח לי תמונה",
+  "תשים את הכלוב עכשיו ותשלח לי תמונה",
+  "תשים את הכלוב עכשיו ותשלח לי תמונה של המפתח",
+  "תצלם את הזין שלך בזקפה ותשלח לי עם הכיתוב 'בבקשה מלכה'"
+];
+
+// ====================== פקודות - תצוגה משופרת ======================
+
+function giveRandomRemoteCommand() {
+  giveRandomCommandFromList(remoteCommands, "📱 פקודה מרחוק", "#ff6b9d");
+}
+
+// שליחה לוואטסאפ - גרסה נקייה ויציבה
+function sendCurrentCommandToWhatsApp() {
+  const display = document.getElementById("randomCommandDisplay");
+  
+  if (display.style.display === "none" || !display.textContent.trim()) {
+    alert("קודם תני פקודה");
+    return;
+  }
+
+  let commandText = display.textContent
+    .replace(/📱 פקודה מרחוק:| פקודה נועזת:/, "")
+    .trim();
+
+ const fullMessage = 
+`👑 *המלכה לימור* 👑
+
+📜 *פקודה חדשה:*
+
+${commandText}
+
+────────────────
+💖 *תבצע יפה*
+🔐 *השליטה שלי. הציות שלך.*
+
+לימור 💋`;
+
+  sendToWhatsApp(fullMessage);
+}
+
+function giveRandomBoldCommand() {
+  // משתמש ב-const cmds המקורית (פקודות נועזות / מקרוב)
+  giveRandomCommandFromList(cmds, "🔥 פקודה נועזת", "#ff3366");
+}
+
+function giveRandomCommandFromList(list, title, accentColor) {
+  if (!list || list.length === 0) {
+    alert("רשימת הפקודות ריקה");
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * list.length);
+  const command = list[randomIndex];
+
+  const display = document.getElementById("randomCommandDisplay");
+  
+  display.style.display = "flex";
+  display.innerHTML = `
+    <div style="max-width:94%;">
+      <div style="color:${accentColor}; font-weight:700; margin-bottom:16px; font-size:1.2rem;">
+        ${title}
+      </div>
+      <div style="font-size:1.28rem; line-height:1.65; color:#fff;">
+        ${command}
+      </div>
+    </div>
+  `;
+
+  // אנימציה
+  display.style.animation = "none";
+  void display.offsetWidth;
+  display.style.animation = "commandPop 0.65s ease";
+  
+  setStatus("🎲 פקודה נבחרה");
+}
+
+// אנימציה
+if (!document.getElementById("command-style")) {
+  const style = document.createElement('style');
+  style.id = "command-style";
+  style.innerHTML = `
+    @keyframes commandPop {
+      0%   { transform: scale(0.88); opacity: 0.7; }
+      50%  { transform: scale(1.06); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+    const aiCommandParts = {
+      openers: {
+        domestic: [
+          "גש למטבח ותסדר אותו כמו שצריך",
+          "בחר אזור אחד בבית שצריך טיפול ותתחיל לעבוד",
+          "תכין לי בית מסודר יותר ממה שקיבלת אותו",
+          "תמצא את הדבר הכי מוזנח בבית ותטפל בו עד שהוא ראוי לאישור שלי",
+          "תפתח סבב ניקיון קצר ותסיים אותו בלי שאצטרך להזכיר לך",
+          "תבחר מטלה שלא בא לך לעשות ותעשה דווקא אותה ראשונה",
+          "תנקה את המטבח עד שהוא מבריק",
+          "תשטוף כלים ותבריק את הכיור",
+          "תסדר את כל הבית ותראה לי תמונה בסוף",
+          "תנקה את הרצפה על ארבע עם מטלית בלבד",
+          "תכין לי קפה ותגיש אותו על הברכיים",
+          "תשפוך לי מים קרים לכוס ותחזיק לי אותה"
+        ],
+        discipline: [
+          "עצור את מה שאתה עושה ותעבור למצב משמעת",
+          "תיישר גב, תנשום, ותבצע את ההוראה בלי ויכוח",
+          "תוכיח לי שאתה יודע לציית גם כשלא נוח לך",
+          "תשים את הטלפון בצד ותתמקד רק במה שאני דורשת ממך",
+          "תעבור למצב שקט ומדויק עד שהמשימה מסתיימת",
+          "תבצע פעולה אחת שתזכיר לך שהמשמעת שלך חשובה לי"
+        ],
+        devotion: [
+          "תעשה פעולה אחת שתראה לי שאתה חושב עליי",
+          "תכין לי מחווה קטנה של שירות ומסירות",
+          "תזכיר לעצמך במעשה, לא במילים, למי אתה שייך",
+          "תכין משהו קטן שיקל עליי בהמשך היום",
+          "תבחר דרך אחת להראות לי שאני במרכז תשומת הלב שלך",
+          "תעשה משהו שימושי בשבילי בלי לבקש הכרה מידית"
+        ],
+        tease: [
+          "תן לרצון שלך לחכות ותתמקד רק במה שאני מבקשת",
+          "תישאר דרוך וממושמע בזמן שאתה מבצע את ההוראה",
+          "תעשה את זה לאט, בידיעה שאני נהנית לדעת שאתה מחכה",
+          "תבצע את ההוראה עם המחשבה שאני שולטת גם בזמן שלך וגם בקצב שלך",
+          "תזכור שהמתח הוא חלק מהמשימה, לא סיבה להפסיק",
+          "תשאיר את הרצון שלך בצד ותיתן לציות להיות הדבר היחיד שחשוב",
+          "המלכה מצווה: תכרע ברך ותנשק את כפות רגליי",
+          "אתה מתבקש להיכנס למצב של ציות מלא עד שאחזור",
+          "המלכה דורשת דיווח מלא על היום שלך",
+          "תתכונן לטקס כניסה למיטה כפי שלימדתי אותך",
+          "המלכה רוצה עיסוי רגליים ארוך ומסור הערב"
+        ]
+      },
+      intensity: {
+        light: [
+          "בלי לחץ ובלי דרמה, אבל בצורה נקייה ומדויקת.",
+          "תעשה את זה יפה, רגוע, ועם תשומת לב.",
+          "מספיק לי ביצוע טוב ושקט."
+        ],
+        medium: [
+          "אני מצפה לביצוע מלא, בלי קיצורי דרך ובלי תירוצים.",
+          "תעבוד ברצינות עד שזה נראה ראוי לאישור שלי.",
+          "אם אתה מתלבט אם זה מספיק טוב, זה עדיין לא מספיק טוב."
+        ],
+        strict: [
+          "אין הפסקות ואין משא ומתן עד שהמשימה גמורה.",
+          "תבצע בדיוק, תבדוק את עצמך, ואז תתקן כל פרט שלא עומד בסטנדרט שלי.",
+          "היום אני לא מקבלת חצי עבודה."
+        ]
+      },
+      detail: [
+        "תתחיל מהחלק שהכי קל לדחות.",
+        "לפני שאתה מסיים, תעבור פעם נוספת ותבדוק שלא נשאר פרט מוזנח.",
+        "תעשה את זה בשקט, בלי לעדכן אותי באמצע ובלי לבקש אישור מוקדם.",
+        "אם אתה מסיים מהר מדי, סימן שלא בדקת מספיק טוב.",
+        "תזכור שהמטרה היא לא רק לסיים, אלא לגרום לי להיות מרוצה מהתוצאה.",
+        "תעשה את זה כאילו אני עומדת לידך ורואה כל פרט."
+      ],
+      duration: {
+        now: "עכשיו.",
+        15: "במשך 15 דקות מלאות.",
+        30: "במשך 30 דקות מלאות.",
+        evening: "עד הערב."
+      },
+      report: {
+        none: "",
+        short: "בסיום שלח לי: בוצע, ומה בדיוק עשית.",
+        photo: "בסיום שלח לי תמונת ביצוע ודיווח קצר."
+      },
+      final: [
+        "אני רוצה להרגיש בביצוע שלך שלא הייתי צריכה לבקש פעמיים.",
+        "אל תנסה להרשים במילים. תן לתוצאה לעשות את זה.",
+        "ביצוע טוב יקבל תגובה אחרת לגמרי מביצוע עצלן.",
+        "תראה לי שאתה מבין שהוראה קטנה עדיין מחייבת ציות מלא.",
+        "כשתסיים, תחכה להוראה הבאה בלי למשוך תשומת לב מיותרת."
+      ]
+    };
+
+    async function generateAICommand() {
+      await tryExternalAI(
+        buildCommandAiPrompt(),
+        text => {
+          currentCommandText = text;
+          const display = document.getElementById("commandDisplay");
+          display.textContent = currentCommandText;
+          display.classList.remove("empty-state");
+        },
+        generateLocalAICommand
+      );
+    }
+
+    function generateLocalAICommand() {
+      const prompt = document.getElementById("commandPrompt").value.trim();
+      const style = document.getElementById("commandStyle").value;
+      const intensity = document.getElementById("commandIntensity").value;
+      const duration = document.getElementById("commandDuration").value;
+      const report = document.getElementById("commandReport").value;
+      const brandOpener = pickRandom(limorBrandLanguage.openers.command, "local-brand-command-opener");
+      const brandVerb = pickRandom(limorBrandLanguage.verbs, "local-brand-command-verb");
+      const brandCloser = pickRandom(limorBrandLanguage.closers.clear, "local-brand-command-closer");
+
+      const lines = [
+        brandOpener,
+        pickRandom(aiCommandParts.openers[style], `command-open-${style}`),
+        prompt ? `שלב בזה במיוחד: ${prompt}.` : "",
+        `הפועל החשוב כאן הוא פשוט: ${brandVerb}.`,
+        aiCommandParts.duration[duration],
+        pickRandom(aiCommandParts.intensity[intensity], `command-intensity-${intensity}`),
+        pickRandom(aiCommandParts.detail, "command-detail"),
+        aiCommandParts.report[report],
+        pickRandom(aiCommandParts.final, "command-final"),
+        brandCloser
+      ].filter(Boolean);
+
+      currentCommandText = lines.join("\n");
+      const display = document.getElementById("commandDisplay");
+      display.textContent = currentCommandText;
+      display.classList.remove("empty-state");
+      setStatus("AI יצר פקודה יצירתית");
+    }
+
+    const teasingMessages = {
+      soft: [
+        "חשבתי עליך עכשיו. תהיה טוב היום, ואולי בערב תקבל חיוך שמגיע לך.",
+        "אני אוהבת לדעת שאתה מחכה להוראה שלי. תישאר ממושמע עד שאחליט אחרת.",
+        "תזכור מי מנהלת את הקצב היום. אתה רק צריך להיות קשוב ומוכן.",
+        "יש לי מצב רוח לשחק איתך קצת. בינתיים, תתנהג יפה ותחשוב עליי.",
+        "תן ליום שלך להמשיך, אבל תשאיר לי מקום קטן בראש.",
+        "אני רוצה שתחכה בשקט להודעה הבאה שלי.",
+        "תהיה טוב היום. אני אחליט אחר כך כמה זה השתלם לך.",
+        "חשבתי עליך עכשיו... תהיה טוב היום, כי בערב אני עלולה להיות ממש לא הוגנת איתך ❤️",
+         "אתה יודע שאני מחייכת עכשיו רק כי אני יודעת כמה אתה מחכה להודעה ממני",
+        "תמשיך ביום שלך, אבל תשאיר לי קצת מקום בראש, בסדר?",
+        "יש לי מצב רוח נעים... זה אומר שאולי תקבל משהו מתוק הערב. או שלא.",
+        "אני אוהבת לדעת שאתה קצת על הקצה בזכותי",
+        "בא לי לשחק איתך קצת... אתה מוכן להיות הצעצוע שלי היום?",
+        "תחשוב עליי חזק, אבל בלי לגעת 😉",
+         "אני במצב רוח שובב... זה יכול להיות מסוכן בשבילך",
+        "מי יודע מה אני מתכננת לך הערב... אתה מתרגש?",
+        "תהיה ילד טוב, ואולי... רק אולי... אפנק אותך"
+      ],
+      bold: [
+        "אני יודעת בדיוק מה ההודעה הזאת עושה לך. תחכה בסבלנות עד שאחליט מה מגיע לך.",
+        "אל תיגע בעצמך. רק תקרא את זה, תתגרה, ותזכור שהרשות אצלי.",
+        "היום אני בוחרת מתי אתה מקבל תשומת לב. עד אז, תישאר דרוך וממושמע.",
+        "בא לי להשאיר אותך על הקצה קצת. תענה לי רק אחרי שסיימת את המטלה הבאה.",
+        "אני רוצה שתחשוב עליי ותשאיר את הידיים שלך ממושמעות.",
+        "תן לרצון שלך לגדול בשקט. אני כבר אחליט מה לעשות איתו.",
+        "היום אתה מחכה, ואני נהנית לדעת את זה.",
+        "אל תיגע בעצמך. אני רוצה שתישאר דרוך עד שאחליט מה לעשות איתך",
+        "אתה מרגיש את זה עכשיו? טוב. זה בדיוק מה שאני רוצה",
+        "היום אני בוחרת מתי אתה מקבל תשומת לב. בינתיים — תהיה ממושמע",
+        "תזכור מי שולטת גם כשאני לא לידך",
+        "אני כבר מדמיינת איך אתה נראה כשאתה מחכה לי",
+        "אני יודעת בדיוק איך אתה מרגיש עכשיו... וזה ממש משעשע אותי",
+        "אל תעז לגעת בעצמך. הרשות נשארת אצלי",
+        "בא לי להשאיר אותך מתוסכל קצת. זה עושה אותך כל כך יפה",
+        "תגיד לי — כמה אתה רוצה אותי עכשיו? (תענה בכנות)",
+        "הגוף שלך שייך לי. גם כשאני לא נוגעת בו",
+        "אתה מתרגש רק כי אני כותבת לך... כמה פתטי זה?",
+        "הזין הקטן שלך כבר קשה רק מהמחשבה שאני שולטת בו, נכון?",
+        "אתה לא יכול לגעת בו בלי רשות ממני. זה עושה אותך כל כך נואש.",
+        "דמיין אותי צוחקת עליך כשאתה מתחנן לגמור.",
+        "אתה כל כך חלש... מספיק שאני מדברת על הגוף שלי ואתה נמס.",
+        "הזין שלך שייך לי. אתה רק שומר עליו עד שאחליט אם להשתמש בו.",
+        "כמה מביך שגבר 'גדול' כמוך מתחנן כמו כלב קטן.",
+        "אתה רוצה אותי? תתחנן כמו שצריך.",
+        "אני יכולה להשאיר אותך על הקצה כל היום, ואתה תודה לי על זה.",
+        "תגיד לי — כמה זמן כבר לא גמרת? תענה בכנות.",
+        "הגוף שלך בוגד בך כל פעם שאני מדברת אליך. זה משעשע אותי.",
+        "אתה רוצה ללקק אותי? תוכיח לי שאתה ראוי.",
+        "תישאר קשה ומיואש. זה המצב הטבעי שלך.",
+        "אני אוהבת לדעת שאתה סובל בשקט בשבילי.",
+        "הזין שלך לא שייך לך יותר. הוא שייך למלכה.",
+        "תדמיין אותי יושבת על הפנים שלך... ועדיין לא נותנת לך לגמור.",
+        "אתה כל כך נואש ופתטי כשאתה מתחנן — זה הכי סקסי אצלך.",
+        "תזכור: אני יכולה להפוך אותך לקורבן של התשוקה שלך.",
+        "אתה יכול להתרגש כמה שאתה רוצה... אבל אתה לא גומר בלי רשות ממני.",
+       "הזין שלך כבר כואב מרוב תשוקה? טוב. כך אני רוצה אותך.",
+       "תישאר על הקצה. אני לא נותנת לך לגמור היום.",
+       "כמה ימים כבר לא גמרת? תענה לי בכנות, עבד קטן.",
+       "אתה יכול להתחנן כמה שאתה רוצה — זה רק יגרום לי לשלול ממך יותר.",
+       "המלכה מחליטה מתי (ואם) הזין שלך יקבל שחרור.",
+       "תלטף את עצמך לאט... אבל אל תעז לגמור. זה עונש.",
+       "אתה נשאר בכלוב עד שאני מחליטה אחרת. זה מה שמגיע לך.",
+       "כל פעם שאתה מרגיש שאתה מתקרב — תפסיק. זה הצו שלי.",
+       "אתה שייך לי. גם האורגזמות שלך שייכות לי.",
+       "דמיין כמה זה יהיה קשה לך הלילה... ותדע שזה רק בגללי.",
+       "אתה לא גומר עד שאני אומרת. וזה יכול לקחת הרבה זמן.",
+       "כמה פתטי שאתה מתחנן על משהו שהוא בכלל לא שלך.",
+       "השליטה שלי על הזין שלך היא מוחלטת. תרגיל את עצמך לזה.",
+       "אתה יכול להיות קשה כמה שאתה רוצה. אבל אתה לא גומר."
+      ],
+      royal: [
+        "המלכה שלך מזכירה: הרצון שלך חשוב פחות מהציות שלך. תתנהג בהתאם.",
+        "היום אתה משרת בשקט, מבצע מהר, ומחכה להחלטה שלי.",
+        "אני מצפה לדיווח מסודר, בלי תירוצים. אולי אחר כך אחליט לפנק אותך במילה טובה.",
+        "תזכור את המקום שלך היום: קשוב, רגוע, וזמין לכל הוראה שלי.",
+        "היום אתה מוכיח נאמנות דרך ביצוע, לא דרך דיבורים.",
+        "כל עוד אני לא משחררת אותך, אתה נשאר בהמתנה מכבדת.",
+        "תפעל כמו מישהו שמבין שהמלכה שלו שמה לב לפרטים.",
+        "המלכה שלך מזכירה לך את המקום שלך. תישאר צייתן",
+        "אתה משרת נאמן שלי, גם כשאני רק חושבת עליך",
+        "כל מחשבה שלך עליי צריכה להגיע עם כבוד",
+        "היום אני רוצה להרגיש את השליטה שלי גם ממרחק",
+        "אתה שייך לי. תתנהג בהתאם",
+        "המלכה שלך חושבת עליך כרגע. תזכור את מקומך גם כשאני לא לצידך.",
+        "אתה משרת נאמן שלי, וזה מחייב אותך להיות קשוב וצייתן בכל רגע.",
+        "היום אני מצפה ממך להתנהגות שמכבדת את הסמכות שלי.",
+        "תישאר בשקט ובציות. המלכה שלך שומרת עליך מרחוק.",
+        "כל מחשבה שלך צריכה לעבור דרכי. זה הכלל.",
+        "אתה שייך לי. תתנהג כמו מישהו שיודע למי הוא משרת.",
+        "המלכה מחייכת עכשיו, כי היא יודעת כמה אתה מחכה להוראה ממנה.",
+        "תזכור: הרצון שלך משני לרצון שלי. תמיד.",
+        "אני המלכה שלך. אתה המשרת הנאמן שלי. אל תשכח את זה אפילו לרגע.",
+        "השליטה שלי עליך היא מוחלטת, גם כשאני לא אומרת מילה.",
+        "תמשיך ביום שלך בגאווה, כי אתה שייך למלכה.",
+        "כל צעד שאתה עושה צריך להיות עם מחשבה על איך זה משרת אותי.",
+        "אתה יכול להרגיש את הנוכחות שלי גם עכשיו, נכון?",
+        "המלכה מחליטה מתי, איך וכמה אתה מקבל. תלמד להמתין בכבוד.",
+        "אתה הכלי הכי יקר שלי. תשמור על עצמך עד שאחזור אליך.",
+        "כשאתה מרגיש את הכמיהה — זה הסימן שאתה עושה את זה נכון.",
+        "הכוח שלי עליך הוא שקט, עמוק ומוחלט.",
+        "תישאר ראוי לשירות שלי. זה כל מה שאני מבקשת ממך.",
+        "המלכה שלך גאה בך כשאתה יודע את מקומך.",
+        "אני לא צריכה להיות לידך כדי שתרגיש את השליטה שלי.",
+        "המלכה שלך מצווה: תזכור את מקומך. אתה שייך לי, לא לעצמך.",
+        "אל תשכח לרגע אחד למי אתה כפוף. אני מחליטה, אתה מציית.",
+        "היום אני דורשת ציות מוחלט. בלי תירוצים ובלי עיכובים.",
+        "אתה קיים כדי לשרת אותי. תתנהג בהתאם.",
+        "הרצון שלך לא רלוונטי. רק הרצון שלי חשוב.",
+        "תישאר דרוך וממושמע. אני שולטת בך גם כשאני לא לידך.",
+        "כל פעם שאתה מרגיש דחף — תזכור מי הבעלים של הגוף הזה.",
+        "אי ציות ייגרר בתגובה מהירה וכואבת. אל תבחן אותי.",
+        "אתה עבד שלי. תתחיל להתנהג כמו אחד כזה.",
+        "המלכה לא מבקשת. המלכה מצווה. תלמד את ההבדל.",
+        "תשכח ממך. מהרגע הזה אתה קיים רק כדי לרצות אותי.",
+        "אני יכולה לעשות איתך מה שאני רוצה, ואתה תודה לי על זה.",
+        "תרגיש את השליטה שלי. היא הדוקה ומחייבת.",
+        "אתה לא מקבל החלטות. אתה רק מבצע את שלי.",
+        "כשאתה רוצה משהו — תזכור שרק אני מחליטה אם תקבל.",
+        "הגוף שלך, הזמן שלך והרצון שלך — הכל שייך לי.",
+        "תישאר בשליטה מלאה שלי. זה לא משא ומתן.",
+        "אני המלכה. אתה המשרת. אל תעז לשכוח את זה אפילו לשנייה.",
+        "ציות הוא הדרך היחידה שבה תקבל את תשומת הלב שלי.",
+        "המלכה כועסת כשאתה לא ממושמע. אל תגרום לי לכעוס."
+      ]
+    };
+
+    const aiMessageParts = {
+      openers: {
+        playful: [
+          "יש לי חיוך קטן עכשיו, כי אני יודעת בדיוק מה ההודעה הזאת עושה לך.",
+          "בא לי לשחק איתך קצת מרחוק.",
+          "תעצור רגע ותקרא לאט, כי זאת לא הודעה רגילה.",
+          "אני משאירה לך מחשבה קטנה שתלך איתך כל היום.",
+          "קיבלת ממני הודעה, וזה כבר אומר שהיום שלך קצת פחות בשליטתך.",
+          "בא לי לבדוק כמה מהר מילים שלי משנות לך את הנשימה."
+        ],
+        commanding: [
+          "תקשיב טוב להודעה הזאת ותענה רק אחרי שהבנת.",
+          "אני מחליטה על הקצב היום, ואתה מתיישר לפי זה.",
+          "זאת הוראה קטנה ממני, והיא דורשת תשומת לב מלאה.",
+          "אני רוצה אותך קשוב, זמין, ובלי ניסיון לנהל את המצב.",
+          "מהרגע שקראת את זה, אתה פועל לפי הקצב שלי.",
+          "תתייחס למילים האלה כאל הוראה, לא כהצעה."
+        ],
+        elegant: [
+          "יש משהו יפה בזה שאתה יודע לחכות להחלטה שלי.",
+          "אני אוהבת שליטה שקטה, מדויקת, בלי רעש ובלי תירוצים.",
+          "היום אני רוצה ממך נוכחות רגועה, ממושמעת, ונעימה.",
+          "אני לא צריכה להרים קול כדי שתבין מי מובילה.",
+          "הדבר שאני רוצה ממך היום הוא דיוק שקט ומסירות ברורה.",
+          "תן למשמעת שלך להיות אלגנטית כמו מחווה טובה."
+        ],
+        mysterious: [
+          "יש לי מחשבה עליך, ואני עוד לא בטוחה שאספר לך את כולה.",
+          "משהו קטן מחכה לך בהמשך, אבל רק אם תישאר קשוב.",
+          "אני משאירה לך רמז אחד: היום הסבלנות שלך תיבחן.",
+          "לא כל דבר צריך להיאמר מיד. לפעמים מספיק שתדע שאני מתכננת.",
+          "אני לא אגיד לך עדיין מה החלטתי, רק שתתנהג בהתאם.",
+          "יש הוראה שעוד לא קיבלת, אבל היא כבר מתחילה לעבוד עליך."
+        ]
+      },
+      intensity: {
+        gentle: [
+          "תישאר רגוע, מתוק, ותזכור שאני אוהבת כשאתה קשוב.",
+          "בינתיים מספיק לי שתחשוב עליי ותתנהג יפה.",
+          "אני רוצה שתשמור על חיוך קטן ועל משמעת טובה.",
+          "אל תמהר לשום מקום. פשוט תישאר נעים ומדויק בשבילי.",
+          "אני אוהבת כשאתה נותן למילים שלי מקום בראש שלך.",
+          "היום מספיק לי שתישאר קשוב לרמזים שלי."
+        ],
+        medium: [
+          "אל תנסה להאיץ שום דבר. הרשות, התזמון והפרס נמצאים אצלי.",
+          "תישאר דרוך וממושמע, ותזכור שאתה מחכה להחלטה שלי.",
+          "אני רוצה לדעת שאתה מרגיש את השליטה שלי גם מרחוק.",
+          "תן לרצון שלך להמתין ותן לציות שלך לעבוד.",
+          "אתה לא צריך לנחש מה יקרה. אתה רק צריך לחכות נכון.",
+          "אני רוצה תגובה של מי שמבין שהקצב לא בידיים שלו."
+        ],
+        hot: [
+          "אל תיגע בעצמך. רק תתגרה מהמילים ותשמור את הרצון שלך בשבילי.",
+          "אני רוצה אותך מחכה, מתוח, ומדויק עד שאחליט אחרת.",
+          "תן להודעה הזאת לעבוד עליך, ותזכור מי מחזיקה ברשות.",
+          "תישאר על הקצה של המחשבה הזאת בלי לקחת לעצמך שום דבר.",
+          "אני רוצה שתרגיש את זה ותשאיר את השליטה אצלי.",
+          "כל מה שאתה רוצה יצטרך לעבור דרכי קודם."
+        ]
+      },
+      bridge: [
+        "אני לא צריכה להיות לידך כדי להזכיר לך למי אתה מקשיב.",
+        "החלק היפה הוא שאתה יודע בדיוק למה אני מתכוונת.",
+        "תן להודעה הזאת להישאר איתך קצת לפני שאתה עונה.",
+        "אני רוצה שהתגובה שלך תהיה קצרה, מדויקת, ומלאה בכבוד.",
+        "אם זה מסיח את דעתך, סימן שזה עובד.",
+        "תזכור: אני נהנית גם מההמתנה שלך."
+      ],
+      closers: {
+        short: [
+          "תענה לי: בוצע.",
+          "תחכה להוראה הבאה.",
+          "תתנהג יפה.",
+          "אל תאכזב אותי.",
+          "תישאר זמין.",
+          "תענה רק כשביקשתי."
+        ],
+        medium: [
+          "תענה לי במשפט אחד כשאתה מוכן להוראה הבאה.",
+          "עד הערב אני רוצה אותך ממושמע, זמין, ובלי תירוצים.",
+          "תזכור: תגובה טובה מתחילה בציות שקט.",
+          "תשלח לי סימן קצר שהבנת, ואז תמשיך ביום שלך כמו שצריך.",
+          "אני רוצה שתשאיר את זה בראש ותתנהל בהתאם.",
+          "אל תנסה להוציא ממני יותר. תחכה למה שאבחר לתת."
+        ],
+        long: [
+          "עד שאחליט אחרת, אתה ממשיך ביום שלך עם המחשבה הזאת בראש ועם ידיעה ברורה מי מנהלת את הקצב.",
+          "אני רוצה שתיקח נשימה, תסיים את מה שעליך לעשות, ותשלח לי דיווח קצר ומסודר בלי לבקש פרס.",
+          "אם תהיה טוב, אולי ההודעה הבאה תהיה אפילו פחות הוגנת כלפיך ויותר מהנה בשבילי.",
+          "תזכור שהסבלנות שלך היא חלק מהשירות שלך, ואני שמה לב גם לדברים שאתה חושב שאני לא רואה.",
+          "אני רוצה שתיתן ליום להמשיך כשהמילים שלי נשארות ברקע ומנהלות לך את הקצב.",
+          "בפעם הבאה שאכתוב לך, אני רוצה לדעת שכבר היית ממושמע עוד לפני שביקשתי שוב."
+        ]
+      }
+    };
+
+    function pickRandom(items, key = "global") {
+      if (!items.length) return "";
+
+      const recent = generationHistory[key] || [];
+      const available = items.filter(item => !recent.includes(item));
+      const pool = available.length ? available : items;
+      const picked = pool[Math.floor(Math.random() * pool.length)];
+      const memorySize = Math.min(6, Math.max(2, items.length - 1));
+
+      generationHistory[key] = [picked, ...recent.filter(item => item !== picked)].slice(0, memorySize);
+      return picked;
+    }
+
+    function shuffleFresh(items, key = "shuffle") {
+      return [...items].sort(() => Math.random() - 0.5).filter(item => !((generationHistory[key] || []).includes(item)));
+    }
+
+    function pickMany(items, count, key = "many") {
+      const fresh = shuffleFresh(items, key);
+      const fallback = [...items].sort(() => Math.random() - 0.5);
+      const merged = [...fresh, ...fallback].filter((item, index, arr) => arr.indexOf(item) === index);
+      const picked = merged.slice(0, count);
+      generationHistory[key] = [...picked, ...(generationHistory[key] || [])].slice(0, Math.min(8, items.length));
+      return picked;
+    }
+
+    function getSignature(value) {
+      if (value === "queen") return "\n\nהמלכה שלך";
+      if (value === "limor") return "\n\nלימור";
+      return "";
+    }
+
+    async function generateAIMessage() {
+      await tryExternalAI(
+        buildTeaseAiPrompt(),
+        text => { document.getElementById("teasingOutput").value = text; },
+        generateLocalAIMessage
+      );
+    }
+
+    function generateLocalAIMessage() {
+      const prompt = document.getElementById("aiPrompt").value.trim();
+      const style = document.getElementById("aiStyle").value;
+      const intensity = document.getElementById("aiIntensity").value;
+      const length = document.getElementById("aiLength").value;
+      const signature = document.getElementById("aiSignature").value;
+      const brandOpener = pickRandom(limorBrandLanguage.openers.tease, "local-brand-tease-opener");
+      const brandTexture = pickRandom(limorBrandLanguage.textures, "local-brand-tease-texture");
+      const brandCloser = pickRandom(limorBrandLanguage.closers[length === "short" ? "soft" : "royal"], "local-brand-tease-closer");
+
+      const lines = [
+        brandOpener,
+        pickRandom(aiMessageParts.openers[style], `message-open-${style}`),
+        prompt ? `אני רוצה שתזכור במיוחד: ${prompt}.` : "",
+        `הטון שאני רוצה שתשמע מתחת למילים: ${brandTexture}.`,
+        pickRandom(aiMessageParts.intensity[intensity], `message-intensity-${intensity}`),
+        pickRandom(aiMessageParts.bridge, "message-bridge"),
+        pickRandom(aiMessageParts.closers[length], `message-close-${length}`),
+        brandCloser
+      ].filter(Boolean);
+
+      document.getElementById("teasingOutput").value = `👑 הודעה מהמלכה:\n\n${lines.join("\n\n")}${getSignature(signature)}`;
+      setStatus("AI יצר הודעה מותאמת");
+    }
+
+    function setTeaseTone(tone) {
+      currentTeasingTone = tone;
+      document.querySelectorAll('#tab4 .tool-btn').forEach(button => {
+        button.classList.toggle("active", button.getAttribute("onclick").includes(`'${tone}'`));
+      });
+      setStatus(`טון טיזינג: ${tone === "soft" ? "רך" : tone === "bold" ? "נועז" : "מלכותי"}`);
+    }
+
+    function generateTeasingMessage() {
+      const messages = teasingMessages[currentTeasingTone] || teasingMessages.bold;
+      const message = pickRandom(messages, `tease-preset-${currentTeasingTone}`);
+      document.getElementById("teasingOutput").value = `👑 הודעה מהמלכה:\n\n${message}`;
+      setStatus("הודעת טיזינג נוצרה");
+    }
+
+    function sendTeasingToWhatsApp() {
+      const message = document.getElementById("teasingOutput").value;
+      if (!message) {
+        alert("קודם צרי הודעת טיזינג");
+        return;
+      }
+
+      sendToWhatsApp(message);
+    }
+
+    function giveRandomCommand() {
+      currentCommandText = cmds[Math.floor(Math.random() * cmds.length)];
+      const display = document.getElementById("commandDisplay");
+      display.textContent = currentCommandText;
+      display.classList.remove("empty-state");
+      setStatus("פקודה נבחרה");
+    }
+
+    async function copyText(text) {
+      if (!text) {
+        alert("אין טקסט להעתקה");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus("הועתק ללוח");
+      } catch {
+        const helper = document.createElement("textarea");
+        helper.value = text;
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+        setStatus("הועתק ללוח");
+      }
+    }
+
+    function copyTextFrom(id) {
+      copyText(document.getElementById(id).value);
+    }
+
+    function copyCommand() {
+      copyText(currentCommandText);
+    }
+
+    function resetAnswers() {
+      document.querySelectorAll('#flrForm input[type="radio"]').forEach(input => {
+        input.checked = false;
+      });
+      currentProtocolText = "";
+      currentProtocolRules = [];
+      currentProtocolScore = 0;
+      document.getElementById("fullProtocol").className = "protocol empty-state";
+      document.getElementById("fullProtocol").textContent = "הפרוטוקול יופיע כאן אחרי מילוי השאלון.";
+      saveState();
+      setStatus("התשובות אופסו");
+    }
+
+  function openTab(n) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  const currentTab = document.getElementById("tab" + n);
+  if (currentTab) currentTab.classList.add("active");
+
+  // עדכון כפתורי ניווט
+  document.querySelectorAll(".nav button").forEach((b, i) => {
+    b.classList.toggle("active", i + 1 === n);
+  });
+
+  // שמות לסטטוס
+  const tabNames = ["שאלון", "מטלות", "פקודות", "טיזינג", "פרוטוקול", "לוח שנה 👑"];
+  setStatus(tabNames[n - 1] || "QUEEN MODE");
+
+  // === פעולות טעינה לפי טאב ===
+if (n === 0) {
+    setTimeout(updateDashboard, 150);
+  }
+  if (n === 1) {
+    createForm(); 
+  }
+  else if (n === 2) {
+    createTasks(); 
+  }
+  else if (n === 5) {
+    if (typeof loadProtocol === "function") {
+      loadProtocol();
+    } else if (typeof createProtocolForm === "function") {
+      createProtocolForm();
+    }
+  }
+  else if (n === 6) {
+    // חשוב: המתנה קלה כדי שה-HTML ייטען
+    setTimeout(() => {
+      renderCalendar();
+      updateStats();
+drawChart();
+    }, 150);
+  }
+}
+
+// ====================== לוח שנה - תקופות מניעה ======================
+let currentDate = new Date();
+let denialPeriods = [];
+
+function loadDenialData() {
+  try {
+    const saved = localStorage.getItem("queenDenialPeriods");
+    if (saved) denialPeriods = JSON.parse(saved);
+  } catch(e) { denialPeriods = []; }
+}
+
+function saveDenialData() {
+  localStorage.setItem("queenDenialPeriods", JSON.stringify(denialPeriods));
+}
+
+function calculateDays(start, end) {
+  const s = new Date(start);
+  const e = new Date(end);
+  return Math.floor((e - s) / (86400000)) + 1;
+}
+
+function getTotalDenialDays() {
+  return denialPeriods.reduce((sum, p) => sum + (p.days || 0), 0);
+}
+
+function getAverageReleaseDays() {
+  if (denialPeriods.length < 2) return 0;
+  return (getTotalDenialDays() / denialPeriods.length).toFixed(1);
+}
+
+function calculateLimorScore() {
+  const total = getTotalDenialDays();
+  const longest = denialPeriods.length ? Math.max(...denialPeriods.map(p => p.days || 0)) : 0;
+  return Math.floor(total * 9 + longest * 28 + Math.pow(longest, 1.6));
+}
+
+function toggleDay(dateStr) {
+  const openIndex = denialPeriods.findIndex(p => p.start && !p.end);
+  
+  if (openIndex !== -1) {
+    denialPeriods[openIndex].end = dateStr;
+    denialPeriods[openIndex].days = calculateDays(denialPeriods[openIndex].start, dateStr);
+    setStatus(`✅ תקופה הסתיימה (${denialPeriods[openIndex].days} ימים)`);
+  } else {
+    denialPeriods.push({ start: dateStr, end: null, days: 0 });
+    setStatus("🔒 התחלת תקופה חדשה");
+  }
+  
+  saveDenialData();
+  renderCalendar();
+  renderPeriods();
+  updateStats();
+drawChart();
+}
+
+function updateStats() {
+  const total = getTotalDenialDays();
+  const longest = denialPeriods.length ? Math.max(...denialPeriods.map(p => p.days || 0)) : 0;
+  const avg = getAverageReleaseDays();
+  const score = calculateLimorScore();
+
+  const streakEl = document.getElementById("currentStreak");
+  const scoreEl = document.getElementById("limorScore");
+  const statsEl = document.getElementById("stats");
+
+  if (streakEl) streakEl.textContent = longest;
+  if (scoreEl) scoreEl.textContent = score;
+  if (statsEl) {
+    statsEl.innerHTML = `
+      סה"כ ימי מניעה: <strong>${total}</strong><br>
+      תקופה ארוכה ביותר: <strong>${longest}</strong> ימים<br>
+      ממוצע בין שחרורים: <strong>${avg || '-'}</strong> ימים
+    `;
+  }
+}
+
+function renderPeriods() {
+  const container = document.getElementById("periodsList");
+  let html = "<h3>תקופות מניעה</h3>";
+  denialPeriods.forEach((p, i) => {
+    html += `
+      <div style="background:rgba(74,0,34,0.4); padding:12px; margin:8px 0; border-radius:8px;">
+        ${p.start} → ${p.end || 'עדיין פתוחה'} <strong>(${p.days} ימים)</strong>
+        <span onclick="removePeriod(${i}); event.stopImmediatePropagation()" style="float:right;color:#ff6b6b;cursor:pointer;font-size:1.4rem;">×</span>
+      </div>`;
+  });
+  container.innerHTML = html || "<p style='color:#888'>עדיין אין תקופות</p>";
+}
+
+function removePeriod(i) {
+  if (confirm("למחוק תקופה זו?")) {
+    denialPeriods.splice(i, 1);
+    saveDenialData();
+    renderCalendar();
+    renderPeriods();
+    updateStats();
+drawChart();
+  }
+}
+
+function resetDenialCalendar() {
+  if (confirm("למחוק את כל הנתונים?")) {
+    denialPeriods = [];
+    saveDenialData();
+    renderCalendar();
+    renderPeriods();
+    updateStats();
+drawChart();
+  }
+}
+
+function renderCalendar() {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  document.getElementById("calendarTitle").textContent = 
+    currentDate.toLocaleDateString('he-IL', { year: 'numeric', month: 'long' });
+
+  let html = `<table style="width:100%; border-collapse:collapse; text-align:center;">
+    <tr style="color:var(--muted); font-weight:600;">
+      <th>א</th><th>ב</th><th>ג</th><th>ד</th><th>ה</th><th>ו</th><th>ש</th>
+    </tr>`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let day = 1;
+  for (let i = 0; i < 6; i++) {
+    html += "<tr>";
+    for (let j = 0; j < 7; j++) {
+      if (i === 0 && j < (firstDay === 0 ? 7 : firstDay)) {
+        html += "<td></td>"; continue;
+      }
+      if (day > daysInMonth) { html += "<td></td>"; continue; }
+
+      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      let symbol = '', bg = 'transparent';
+
+      const isStart = denialPeriods.some(p => p.start === dateStr);
+      const isEnd = denialPeriods.some(p => p.end === dateStr);
+
+      if (isStart) { symbol = '🔒'; bg = '#4a0022'; }
+      if (isEnd)   { symbol = '🔓'; bg = '#003300'; }
+
+      html += `
+        <td onclick="toggleDay('${dateStr}')" 
+            style="padding:14px 8px; cursor:pointer; border:1px solid #333; background:${bg};">
+          ${day}<br>${symbol}
+        </td>`;
+      day++;
+    }
+    html += "</tr>";
+    if (day > daysInMonth) break;
+  }
+  html += "</table>";
+  document.getElementById("calendar").innerHTML = html;
+}
+
+// אתחול
+loadDenialData();
+
+// ====================== גרף Progress Bar עם אנימציה ======================
+let animationFrame = null;
+
+function drawChart(animated = true) {
+  const canvas = document.getElementById("progressChart");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  
+  if (denialPeriods.length === 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#666";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("הגרף יופיע אחרי תקופת מניעה ראשונה 👑", canvas.width/2, canvas.height/2);
+    return;
+  }
+
+  const days = denialPeriods.map(p => p.days || 0);
+  const maxDays = Math.max(...days, 10);
+  const barHeight = 24;
+  const spacing = 38;
+  const startY = 52;
+
+  let progress = animated ? 0 : 1;   // 0 עד 1
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    days.forEach((val, i) => {
+      const targetWidth = Math.floor((val / maxDays) * (canvas.width - 118));
+      const currentWidth = Math.floor(targetWidth * progress);
+      const y = startY + i * spacing;
+
+      // רקע
+      ctx.fillStyle = "#222";
+      ctx.fillRect(48, y, canvas.width - 118, barHeight);
+
+      // Progress Bar עם אנימציה
+      ctx.fillStyle = val >= 21 ? "#ffd700" : "#ff4d94";
+      ctx.fillRect(48, y, currentWidth, barHeight);
+
+      // מספר ימים
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 14px Arial";
+      ctx.textAlign = "right";
+      ctx.fillText(val, 40, y + 17);
+
+      ctx.fillStyle = "#bbb";
+      ctx.font = "11px Arial";
+      ctx.fillText("ימים", 48, y + 17);
+
+      // מספר תקופה
+      ctx.fillStyle = "#999";
+      ctx.font = "12px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText(`תקופה ${i+1}`, canvas.width - 35, y + 17);
+    });
+
+    // כותרת
+    ctx.fillStyle = "#eee";
+    ctx.font = "bold 15.5px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("אורך תקופות המניעה", canvas.width/2, 28);
+
+    if (progress < 1) {
+      progress += 0.08; // מהירות האנימציה
+      animationFrame = requestAnimationFrame(animate);
+    }
+  }
+
+  animate();
+}
+
+// אתחול
+loadDenialData();
+
+// ====================== התראות יומיות ======================
+let notificationInterval = null;
+
+function toggleDailyNotifications() {
+  const enabled = document.getElementById("dailyNotifications").checked;
+  
+  if (enabled) {
+    if (!("Notification" in window)) {
+      alert("הדפדפן שלך לא תומך בהתראות");
+      document.getElementById("dailyNotifications").checked = false;
+      return;
+    }
+
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        localStorage.setItem("queenDailyNotifications", "true");
+        startDailyNotifications();
+        setStatus("✅ התראות יומיות הופעלו");
+      } else {
+        alert("יש לאשר התראות בדפדפן");
+        document.getElementById("dailyNotifications").checked = false;
+      }
+    });
+  } else {
+    localStorage.setItem("queenDailyNotifications", "false");
+    if (notificationInterval) clearInterval(notificationInterval);
+    setStatus("התראות יומיות כובו");
+  }
+}
+
+function startDailyNotifications() {
+  if (notificationInterval) clearInterval(notificationInterval);
+
+  // בדיקה כל 5 דקות
+  notificationInterval = setInterval(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+
+    // שליחת התראה ב-20:00 (±5 דקות)
+    if (hour === 20 && minute >= 0 && minute <= 5) {
+      sendDailyNotification();
+    }
+  }, 300000); // כל 5 דקות
+}
+
+function sendDailyNotification() {
+  const streak = getStreak();
+  const todayKey = new Date().toISOString().split('T')[0];
+  const isTodayDenied = !!denialData[todayKey];
+
+  let title = "👑 QUEEN MODE - לימור";
+  let body = "";
+
+  if (streak > 0) {
+    body = `Streak נוכחי: ${streak} ימים 🔥\nאל תשכחי לשמור על השליטה!`;
+  } else if (isTodayDenied) {
+    body = "היום מסומן כמניעה. כל הכבוד 👑";
+  } else {
+    body = "האם היום יום מניעה? סמני בלוח השנה";
+  }
+
+  new Notification(title, {
+    body: body,
+    icon: "https://i.imgur.com/queen-crown.png", // אפשר לשנות
+    tag: "queen-daily" // מונע כפילויות
+  });
+}
+
+// טעינה ראשונית
+function initNotifications() {
+  const enabled = localStorage.getItem("queenDailyNotifications") === "true";
+  const checkbox = document.getElementById("dailyNotifications");
+  if (checkbox) checkbox.checked = enabled;
+
+  if (enabled) {
+    startDailyNotifications();
+  }
+}
+
+function updateDashboard() {
+  // Streak + ציון
+  let streak = typeof getStreak === "function" ? getStreak() : 0;
+  let score = typeof calculateLimorScore === "function" ? calculateLimorScore() : 0;
+
+  document.getElementById("dashStreak").textContent = streak;
+  document.getElementById("dashScore").textContent = score;
+
+  // מטלות
+  const checked = document.querySelectorAll('#tasksContainer input[type="checkbox"]:checked').length;
+  document.getElementById("dashTasks").innerHTML = checked > 0 
+    ? `<strong style="color:#ff6b9d;">${checked} מטלות מסומנות להיום</strong>` 
+    : `<span style="color:#888;">אין מטלות מסומנות</span>`;
+
+  // פקודה אחרונה
+  const display = document.getElementById("randomCommandDisplay");
+  const lastCmd = document.getElementById("dashLastCommand");
+  
+  if (display && display.style.display !== "none" && display.textContent.trim()) {
+    let text = display.textContent.replace(/📱.*:|🔥.*:/, "").trim();
+    lastCmd.innerHTML = `<strong>${text}</strong>`;
+  } else {
+    lastCmd.innerHTML = `<span style="color:#888;">עדיין לא נבחרה פקודה</span>`;
+  }
+}
+
+  </script>
+</body>
+</html>
