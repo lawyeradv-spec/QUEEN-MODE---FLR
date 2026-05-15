@@ -2157,11 +2157,19 @@ if (!document.getElementById("command-style")) {
 let currentDate = new Date();
 let denialPeriods = [];
 let activeDenialStart = null;   // תאריך התחלה של תקופה פעילה
+let activeDenialStartTime = null; // זמן התחלה מדויק לשעון
+let pausedTimerText = "00:00:00";
+let pausedTimerStatus = "אין תקופה פעילה";
 
 function loadDenialData() {
   try {
     const saved = localStorage.getItem("queenDenialPeriods");
     if (saved) denialPeriods = JSON.parse(saved);
+    const openPeriod = denialPeriods.find(p => p.start && !p.end);
+    activeDenialStart = openPeriod ? openPeriod.start : null;
+    activeDenialStartTime = openPeriod ? (openPeriod.startTime || new Date().toISOString()) : null;
+    pausedTimerText = "00:00:00";
+    pausedTimerStatus = activeDenialStart ? "תקופה פעילה עכשיו" : "אין תקופה פעילה";
   } catch(e) {}
 }
 
@@ -2169,84 +2177,128 @@ function saveDenialData() {
   localStorage.setItem("queenDenialPeriods", JSON.stringify(denialPeriods));
 }
 
+function calculateDays(startDate, endDate) {
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  const diffDays = Math.floor((end - start) / 86400000) + 1;
+  return Math.max(1, diffDays);
+}
+
+function getActivePeriod() {
+  return denialPeriods.find(p => p.start && !p.end) || null;
+}
+
+function formatElapsedFrom(startTime, endTime = new Date()) {
+  if (!startTime) return "00:00:00";
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  if (Number.isNaN(start.getTime())) return "00:00:00";
+
+  let diff = Math.max(0, Math.floor((end - start) / 1000));
+  const hours = Math.floor(diff / 3600);
+  diff %= 3600;
+  const minutes = Math.floor(diff / 60);
+  const seconds = diff % 60;
+  return `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+}
+
+function getStreak() {
+  const active = getActivePeriod();
+  if (active) return calculateDays(active.start, new Date().toISOString().slice(0, 10));
+  if (!denialPeriods.length) return 0;
+  return Math.max(...denialPeriods.map(p => p.days || 0));
+}
+
+function calculateLimorScore() {
+  return denialPeriods.reduce((sum, p) => sum + ((p.days || 0) * 10), 0) + (getActivePeriod() ? 5 : 0);
+}
+
+// ====================== לוח שנה + שעון חי (תיקון) ======================
 function toggleDay(dateStr) {
   const openIndex = denialPeriods.findIndex(p => p.start && !p.end);
 
   if (openIndex !== -1) {
     // סיום תקופה
+    const endTime = new Date().toISOString();
     denialPeriods[openIndex].end = dateStr;
+    denialPeriods[openIndex].endTime = endTime;
     denialPeriods[openIndex].days = calculateDays(denialPeriods[openIndex].start, dateStr);
+    pausedTimerText = formatElapsedFrom(activeDenialStartTime || denialPeriods[openIndex].startTime, endTime);
+    pausedTimerStatus = `תקופה הסתיימה (${denialPeriods[openIndex].days} ימים)`;
     activeDenialStart = null;
+    activeDenialStartTime = null;
     setStatus(`✅ תקופה הסתיימה (${denialPeriods[openIndex].days} ימים)`);
   } else {
     // התחלת תקופה חדשה
-    denialPeriods.push({ start: dateStr, end: null, days: 0 });
+    const startTime = new Date().toISOString();
+    denialPeriods.push({ start: dateStr, startTime, end: null, endTime: null, days: 0 });
     activeDenialStart = dateStr;
+    activeDenialStartTime = startTime;
+    pausedTimerText = "00:00:00";
+    pausedTimerStatus = "תקופה פעילה עכשיו";
     setStatus("🔒 התחלת תקופת מניעה חדשה");
   }
   
   saveDenialData();
   renderCalendar();
+  updateStats();
+  drawChart();
+  startLiveTimer();
+  
+  // עדכון מיידי של הדשבורד + שעון
   updateDashboard();
 }
 
-function calculateDays(start, end) {
-  const s = new Date(start);
-  const e = new Date(end);
-  return Math.floor((e - s) / (86400000)) + 1;
+// שעון חי - גרסה משופרת
+let timerInterval = null;
+
+function setAllText(id, text) {
+  document.querySelectorAll(`#${id}`).forEach(el => {
+    el.textContent = text;
+  });
 }
 
-// שעון חי
-let timerInterval = null;
+function setAllStyle(id, property, value) {
+  document.querySelectorAll(`#${id}`).forEach(el => {
+    el.style[property] = value;
+  });
+}
 
 function startLiveTimer() {
   if (timerInterval) clearInterval(timerInterval);
 
-  timerInterval = setInterval(() => {
+  const tick = () => {
     if (!activeDenialStart) {
-      document.getElementById("liveTimer").textContent = "00:00:00";
-      document.getElementById("liveTimerStatus").textContent = "אין תקופה פעילה";
+      setAllText("liveTimer", pausedTimerText);
+      setAllText("liveTimerStatus", pausedTimerStatus);
+      setAllStyle("liveTimerStatus", "color", "#888");
       return;
     }
 
-    const start = new Date(activeDenialStart);
-    const now = new Date();
-    const diff = Math.floor((now - start) / 1000);
+    setAllText("liveTimer", formatElapsedFrom(activeDenialStartTime));
+    setAllText("liveTimerStatus", "תקופה פעילה עכשיו");
+    setAllStyle("liveTimerStatus", "color", "#ff6b9d");
+  };
 
-    const hours = Math.floor(diff / 3600);
-    const minutes = Math.floor((diff % 3600) / 60);
-    const seconds = diff % 60;
-
-    document.getElementById("liveTimer").textContent = 
-      `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
-    
-    document.getElementById("liveTimerStatus").textContent = "תקופה פעילה";
-  }, 1000);
+  tick();
+  if (activeDenialStart) {
+    timerInterval = setInterval(tick, 1000);
+  }
 }
 
 function updateDashboard() {
-  // Streak + Score
   let streak = typeof getStreak === "function" ? getStreak() : 0;
   let score = typeof calculateLimorScore === "function" ? calculateLimorScore() : 0;
 
-  document.getElementById("dashStreak").textContent = streak;
-  document.getElementById("dashScore").textContent = score;
+  setAllText("dashStreak", String(streak));
+  setAllText("dashScore", String(score));
 
   // מטלות
   const checked = document.querySelectorAll('#tasksContainer input[type="checkbox"]:checked').length;
   document.getElementById("dashTasks").innerHTML = checked > 0 
-    ? `<strong style="color:#ff6b9d;">${checked} מטלות מסומנות להיום</strong>` 
+    ? `<strong style="color:#ff6b9d;">${checked} מטלות מסומנות</strong>` 
     : `<span style="color:#888;">אין מטלות מסומנות</span>`;
-
-  // פקודה אחרונה
-  const display = document.getElementById("randomCommandDisplay");
-  const lastCmd = document.getElementById("dashLastCommand");
-  if (display && display.style.display !== "none" && display.textContent.trim()) {
-    let text = display.textContent.replace(/📱.*:|🔥.*:/, "").trim();
-    lastCmd.innerHTML = `<strong>${text}</strong>`;
-  } else {
-    lastCmd.innerHTML = `<span style="color:#888;">עדיין לא נבחרה פקודה</span>`;
-  }
 
   // שעון חי
   startLiveTimer();
@@ -2254,6 +2306,7 @@ function updateDashboard() {
 
 function renderPeriods() {
   const container = document.getElementById("periodsList");
+  if (!container) return;
   let html = "<h3>תקופות מניעה</h3>";
   denialPeriods.forEach((p, i) => {
     html += `
@@ -2268,23 +2321,39 @@ function renderPeriods() {
 function removePeriod(i) {
   if (confirm("למחוק תקופה זו?")) {
     denialPeriods.splice(i, 1);
+    const openPeriod = getActivePeriod();
+    activeDenialStart = openPeriod ? openPeriod.start : null;
+    activeDenialStartTime = openPeriod ? (openPeriod.startTime || new Date().toISOString()) : null;
+    pausedTimerText = "00:00:00";
+    pausedTimerStatus = activeDenialStart ? "תקופה פעילה עכשיו" : "אין תקופה פעילה";
     saveDenialData();
     renderCalendar();
     renderPeriods();
     updateStats();
-drawChart();
+    drawChart();
+    startLiveTimer();
   }
 }
 
 function resetDenialCalendar() {
   if (confirm("למחוק את כל הנתונים?")) {
     denialPeriods = [];
+    activeDenialStart = null;
+    activeDenialStartTime = null;
+    pausedTimerText = "00:00:00";
+    pausedTimerStatus = "אין תקופה פעילה";
     saveDenialData();
     renderCalendar();
     renderPeriods();
     updateStats();
-drawChart();
+    drawChart();
+    startLiveTimer();
   }
+}
+
+function updateStats() {
+  setAllText("dashStreak", String(getStreak()));
+  setAllText("dashScore", String(calculateLimorScore()));
 }
 
 function renderCalendar() {
@@ -2498,8 +2567,8 @@ function updateDashboard() {
   let streak = typeof getStreak === "function" ? getStreak() : 0;
   let score = typeof calculateLimorScore === "function" ? calculateLimorScore() : 0;
 
-  document.getElementById("dashStreak").textContent = streak;
-  document.getElementById("dashScore").textContent = score;
+  setAllText("dashStreak", String(streak));
+  setAllText("dashScore", String(score));
 
   // מטלות
   const checked = document.querySelectorAll('#tasksContainer input[type="checkbox"]:checked').length;
@@ -2517,6 +2586,8 @@ function updateDashboard() {
   } else {
     lastCmd.innerHTML = `<span style="color:#888;">עדיין לא נבחרה פקודה</span>`;
   }
+
+  startLiveTimer();
 }
 
   </script>
