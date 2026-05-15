@@ -75,6 +75,7 @@
       background: rgba(255,255,255,0.055);
     }
     .generator-panel.ai-collapsed { display: none; }
+    .collapsible-list.collapsed { display: none; }
     .ai-panel-toggle {
       width: 100%;
       margin: 0 0 12px;
@@ -289,7 +290,8 @@
         <label class="field"><span>דדליין</span><select id="tasksDeadline"><option value="evening" selected>עד הערב</option><option value="bedtime">לפני השינה</option><option value="now">עכשיו</option></select></label>
         <label class="field"><span>דיווח</span><select id="tasksReport"><option value="short" selected>דיווח קצר</option><option value="detailed">מפורט</option><option value="photo">תמונה</option><option value="none">ללא</option></select></label>
       </div>
-      <div id="tasksContainer"></div>
+      <button type="button" class="ai-panel-toggle" onclick="toggleTaskList(this)">פתח רשימת מטלות</button>
+      <div id="tasksContainer" class="collapsible-list collapsed"></div>
       <button type="button" class="main" onclick="generateHumanTasksMessage()">AI יצירת הודעת מטלות</button>
       <button type="button" class="main" onclick="generateMessage()">יצירת הודעה לוואטסאפ</button>
       <button type="button" class="main whatsapp-btn" onclick="sendTasksToWhatsApp()">שלח בוואטסאפ</button>
@@ -311,6 +313,49 @@
       🔥 תני פקודה נועזת
     </button>
   </div>
+
+  <button type="button" class="ai-panel-toggle" onclick="toggleAiPanel('commandAiPanel', this)">הצג מחולל AI לפקודות</button>
+  <div class="generator-panel ai-collapsed" id="commandAiPanel">
+    <label class="field wide">
+      <span>מה ה-AI צריך לשלב בפקודה?</span>
+      <input type="text" id="commandPrompt" placeholder="לדוגמה: מטבח, דיווח בערב, משמעת בזמן עבודה">
+    </label>
+    <label class="field">
+      <span>סגנון</span>
+      <select id="commandStyle">
+        <option value="domestic">בית ומטלות</option>
+        <option value="discipline">משמעת</option>
+        <option value="devotion">מסירות</option>
+        <option value="tease">טיזינג</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>עוצמה</span>
+      <select id="commandIntensity">
+        <option value="light">קל</option>
+        <option value="medium" selected>בינוני</option>
+        <option value="strict">קשוח</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>זמן</span>
+      <select id="commandDuration">
+        <option value="now">עכשיו</option>
+        <option value="15">15 דקות</option>
+        <option value="30">30 דקות</option>
+        <option value="evening">עד הערב</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>דיווח</span>
+      <select id="commandReport">
+        <option value="none">ללא</option>
+        <option value="short" selected>דיווח קצר</option>
+        <option value="photo">לבקש תמונת ביצוע</option>
+      </select>
+    </label>
+  </div>
+  <button type="button" class="main" onclick="generateAICommand()">AI חיצוני יצירת פקודה מקורית</button>
 
   <div id="randomCommandDisplay" style="margin:30px 15px; padding:32px; background:rgba(0,0,0,0.5); border-radius:16px; min-height:170px; display:none; align-items:center; justify-content:center; text-align:center; font-size:1.25rem; line-height:1.7; border:1px solid rgba(255,107,157,0.3);"></div>
 
@@ -663,6 +708,13 @@ window.onload = function() {
       button.textContent = button.textContent
         .replace(isOpening ? "הצג" : "הסתר", isOpening ? "הסתר" : "הצג");
       setStatus(isOpening ? "פאנל AI נפתח" : "פאנל AI הוסתר");
+    }
+
+    function toggleTaskList(button) {
+      const list = document.getElementById("tasksContainer");
+      const isOpening = list.classList.toggle("collapsed") === false;
+      button.textContent = isOpening ? "סגור רשימת מטלות" : "פתח רשימת מטלות";
+      setStatus(isOpening ? "רשימת המטלות נפתחה" : "רשימת המטלות נסגרה");
     }
 
     function getSavedState() {
@@ -1719,9 +1771,9 @@ if (!document.getElementById("command-style")) {
         buildCommandAiPrompt(),
         text => {
           currentCommandText = text;
-          const display = document.getElementById("commandDisplay");
-          display.textContent = currentCommandText;
-          display.classList.remove("empty-state");
+          const display = document.getElementById("randomCommandDisplay");
+          display.style.display = "flex";
+          display.innerHTML = `<div><strong style="color:#ff6b9d;">🤖 פקודת AI חיצוני:</strong><br><br>${currentCommandText}</div>`;
         },
         generateLocalAICommand
       );
@@ -1751,9 +1803,9 @@ if (!document.getElementById("command-style")) {
       ].filter(Boolean);
 
       currentCommandText = lines.join("\n");
-      const display = document.getElementById("commandDisplay");
-      display.textContent = currentCommandText;
-      display.classList.remove("empty-state");
+      const display = document.getElementById("randomCommandDisplay");
+      display.style.display = "flex";
+      display.innerHTML = `<div><strong style="color:#ff6b9d;">🤖 פקודת AI פנימי:</strong><br><br>${currentCommandText}</div>`;
       setStatus("AI יצר פקודה יצירתית");
     }
 
@@ -2074,9 +2126,9 @@ if (!document.getElementById("command-style")) {
 
     function giveRandomCommand() {
       currentCommandText = cmds[Math.floor(Math.random() * cmds.length)];
-      const display = document.getElementById("commandDisplay");
-      display.textContent = currentCommandText;
-      display.classList.remove("empty-state");
+      const display = document.getElementById("randomCommandDisplay");
+      display.style.display = "flex";
+      display.innerHTML = `<div><strong style="color:#ff6b9d;">👑 פקודה:</strong><br><br>${currentCommandText}</div>`;
       setStatus("פקודה נבחרה");
     }
 
