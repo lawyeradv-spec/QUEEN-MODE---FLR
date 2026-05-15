@@ -486,6 +486,7 @@ window.onload = function() {
   createForm();
   createTasks();
   setTeaseTone(currentTeasingTone);
+  if (typeof initNotifications === "function") initNotifications();
   
   // הפעלת מסך הפתיחה
   showSplashScreen();
@@ -2515,31 +2516,40 @@ function toggleDailyNotifications() {
 function startDailyNotifications() {
   if (notificationInterval) clearInterval(notificationInterval);
 
-  // בדיקה כל 5 דקות
-  notificationInterval = setInterval(() => {
+  const checkAndSend = () => {
     const now = new Date();
     const hour = now.getHours();
     const minute = now.getMinutes();
+    const todayKey = now.toISOString().split('T')[0];
+    const lastSent = localStorage.getItem("queenDailyNotificationLastSent");
 
     // שליחת התראה ב-20:00 (±5 דקות)
-    if (hour === 20 && minute >= 0 && minute <= 5) {
+    if (hour === 20 && minute >= 0 && minute <= 5 && lastSent !== todayKey) {
       sendDailyNotification();
+      localStorage.setItem("queenDailyNotificationLastSent", todayKey);
     }
-  }, 300000); // כל 5 דקות
+  };
+
+  checkAndSend();
+  // בדיקה כל 5 דקות
+  notificationInterval = setInterval(checkAndSend, 300000);
 }
 
 function sendDailyNotification() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
   const streak = getStreak();
   const todayKey = new Date().toISOString().split('T')[0];
-  const isTodayDenied = !!denialData[todayKey];
+  const active = getActivePeriod();
+  const isTodayDenied = !!active || denialPeriods.some(p => p.start <= todayKey && p.end && p.end >= todayKey);
 
   let title = "👑 QUEEN MODE - לימור";
   let body = "";
 
-  if (streak > 0) {
-    body = `Streak נוכחי: ${streak} ימים 🔥\nאל תשכחי לשמור על השליטה!`;
+  if (active) {
+    body = `תקופת מניעה פעילה. יום ${streak}. המלכה שמה לב לעקביות שלך.`;
   } else if (isTodayDenied) {
-    body = "היום מסומן כמניעה. כל הכבוד 👑";
+    body = "היום מסומן כחלק מתקופת מניעה שהסתיימה. בדקי את הלוח אם צריך לעדכן.";
   } else {
     body = "האם היום יום מניעה? סמני בלוח השנה";
   }
