@@ -169,27 +169,34 @@
 
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:18px;">
     
-    <!-- כרטיס Streak -->
-    <div class="question" style="text-align:center; background:rgba(74,0,34,0.4); border:1px solid #ff6b9d;">
-      <h3>Streak נוכחי</h3>
-      <div id="dashStreak" style="font-size:3.8rem; font-weight:900; color:#ffd700;">0</div>
-      <div>ימים ללא רשות</div>
+    <!-- שעון חי - הכרטיס החשוב ביותר -->
+    <div class="question" style="text-align:center; background:rgba(74,0,34,0.5); border:2px solid #ff6b9d; grid-column: 1 / -1;">
+      <h3>⏱️ תקופת מניעה פעילה</h3>
+      <div id="liveTimer" style="font-size:3.6rem; font-weight:900; color:#ff6b9d; letter-spacing:4px;">00:00:00</div>
+      <div id="liveTimerStatus" style="color:#ff9ed4; margin-top:8px; font-size:1.1rem;">אין תקופה פעילה כרגע</div>
     </div>
 
-    <!-- כרטיס ציון ללימור -->
+    <!-- Streak -->
+    <div class="question" style="text-align:center; background:rgba(74,0,34,0.4); border:1px solid #ff6b9d;">
+      <h3>Streak נוכחי</h3>
+      <div id="dashStreak" style="font-size:3.2rem; font-weight:900; color:#ffd700;">0</div>
+      <div>ימים</div>
+    </div>
+
+    <!-- ציון ללימור -->
     <div class="question" style="text-align:center; background:rgba(255,215,0,0.1); border:1px solid #ffd700;">
       <h3>ציון ללימור</h3>
-      <div id="dashScore" style="font-size:3.8rem; font-weight:900; color:#ffd700;">0</div>
+      <div id="dashScore" style="font-size:3.2rem; font-weight:900; color:#ffd700;">0</div>
       <div>נקודות שליטה</div>
     </div>
 
-    <!-- כרטיס מטלות להיום -->
+    <!-- מטלות להיום -->
     <div class="question">
       <h3>מטלות להיום</h3>
-      <div id="dashTasks" style="line-height:1.8; min-height:80px; color:#ddd;"></div>
+      <div id="dashTasks" style="line-height:1.8; min-height:80px;"></div>
     </div>
 
-    <!-- כרטיס פקודה אחרונה -->
+    <!-- פקודה אחרונה -->
     <div class="question">
       <h3>פקודה אחרונה</h3>
       <div id="dashLastCommand" style="font-size:1.1rem; color:#ff9ed4; min-height:80px;"></div>
@@ -416,43 +423,33 @@
       <div id="fullProtocol" class="protocol empty-state">הפרוטוקול יופיע כאן אחרי מילוי השאלון.</div>
     </div>
 
-<!-- Tab 6 - לוח שנה -->
+<!-- Tab 6 - לוח שנה משודרג -->
 <div id="tab6" class="tab">
   <div class="toolbar" style="margin-bottom: 16px; display:flex; justify-content:space-between; align-items:center;">
     <h2>לוח תקופות מניעה 👑</h2>
     <span id="calendarTitle" style="font-weight:600; color:var(--accent);"></span>
   </div>
 
-  <div style="background:rgba(255,255,255,0.06); padding:14px; border-radius:12px; margin-bottom:20px; text-align:center; font-size:0.95rem;">
-    לחצי על יום = התחלה 🔒<br>
-    לחצי על יום אחר = סיום 🔓
+  <div style="background:rgba(255,255,255,0.06); padding:14px; border-radius:12px; margin-bottom:20px; text-align:center;">
+    לחצי על יום = התחלת מניעה (🔒)<br>
+    לחצי על יום אחר = סיום מניעה (🔓)
   </div>
-
-<canvas id="progressChart" width="500" height="180" style="width:100%; background:#111; border-radius:10px;"></canvas>
 
   <div id="calendar" style="background:rgba(0,0,0,0.35); padding:16px; border-radius:12px; border:1px solid var(--line); margin-bottom:24px;"></div>
 
-  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:16px; margin-bottom:24px;">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:18px;">
     <div class="question" style="text-align:center;">
-      <h3>תקופה ארוכה ביותר</h3>
-      <div id="currentStreak" style="font-size:3.4rem; font-weight:900;">0</div>
-      <div>ימים</div>
+      <h3>תקופת מניעה פעילה</h3>
+      <div id="liveTimer" style="font-size:2.8rem; font-weight:900; color:#ff6b9d;">00:00:00</div>
+      <div id="liveTimerStatus" style="color:#aaa;">אין תקופה פעילה</div>
     </div>
     <div class="question" style="text-align:center;">
       <h3>ציון ללימור</h3>
-      <div id="limorScore" style="font-size:3.4rem; font-weight:900; color:#ffd700;">0</div>
-    </div>
-    <div class="question" style="text-align:center;">
-      <h3>סטטיסטיקה</h3>
-      <div id="stats" style="line-height:1.8;"></div>
+      <div id="dashScore" style="font-size:3.2rem; font-weight:900; color:#ffd700;">0</div>
     </div>
   </div>
 
-  <div id="periodsList" style="margin:20px 0;"></div>
-
-  <button onclick="resetDenialCalendar()" class="main" style="margin-top:20px; background:#c00; width:100%; padding:14px;">
-    איפוס כל הנתונים
-  </button>
+  <button onclick="resetDenialCalendar()" class="main" style="margin-top:25px; background:#c00; width:100%;">איפוס כל הנתונים</button>
 </div>
 
   <!-- התראות יומיות -->
@@ -478,21 +475,21 @@
         setTimeout(() => {
           splash.style.display = "none";
           mainApp.style.display = "block";
-          openTab(1); // פותח את טאב השאלון
+          openTab(0); // פותח את הדשבורד כברירת מחדל
         }, 800);
-      }, 2800);
+      }, 2600);
     }
 
-    // ====================== אתחול ======================
-    window.onload = function() {
-      loadAiSettings();
-      createForm();
-      createTasks();
-      setTeaseTone(currentTeasingTone);
-      
-      // הפעלת מסך הפתיחה
-      showSplashScreen();
-    };
+   // ====================== אתחול ======================
+window.onload = function() {
+  loadAiSettings();
+  createForm();
+  createTasks();
+  setTeaseTone(currentTeasingTone);
+  
+  // הפעלת מסך הפתיחה
+  showSplashScreen();
+};
   </script>
   
 <script>
@@ -2124,59 +2121,73 @@ if (!document.getElementById("command-style")) {
     }
 
   function openTab(n) {
+  // הסתרת כל הטאבים
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  
+  // הפעלת הטאב הנבחר
   const currentTab = document.getElementById("tab" + n);
   if (currentTab) currentTab.classList.add("active");
 
-  // עדכון כפתורי ניווט
-  document.querySelectorAll(".nav button").forEach((b, i) => {
-    b.classList.toggle("active", i + 1 === n);
+  // עדכון כפתורי הניווט - סימון נכון
+  document.querySelectorAll(".nav button").forEach((btn, index) => {
+    btn.classList.toggle("active", index === n);
   });
 
-  // שמות לסטטוס
-  const tabNames = ["שאלון", "מטלות", "פקודות", "טיזינג", "פרוטוקול", "לוח שנה 👑"];
-  setStatus(tabNames[n - 1] || "QUEEN MODE");
+  // עדכון סטטוס
+  const tabNames = ["דשבורד", "שאלון", "מטלות", "פקודות", "טיזינג", "פרוטוקול", "לוח שנה 👑"];
+  setStatus(tabNames[n] || "QUEEN MODE");
 
-  // === פעולות טעינה לפי טאב ===
-if (n === 0) {
-    setTimeout(updateDashboard, 150);
-  }
-  if (n === 1) {
-    createForm(); 
-  }
+  // פעולות מיוחדות לטאבים
+  if (n === 0) {
+    setTimeout(updateDashboard, 100);
+  } 
   else if (n === 2) {
-    createTasks(); 
-  }
-  else if (n === 5) {
-    if (typeof loadProtocol === "function") {
-      loadProtocol();
-    } else if (typeof createProtocolForm === "function") {
-      createProtocolForm();
-    }
-  }
+    createTasks();
+  } 
   else if (n === 6) {
-    // חשוב: המתנה קלה כדי שה-HTML ייטען
     setTimeout(() => {
       renderCalendar();
       updateStats();
-drawChart();
+      drawChart();
     }, 150);
   }
 }
 
-// ====================== לוח שנה - תקופות מניעה ======================
+// ====================== לוח שנה + שעון חי ======================
 let currentDate = new Date();
 let denialPeriods = [];
+let activeDenialStart = null;   // תאריך התחלה של תקופה פעילה
 
 function loadDenialData() {
   try {
     const saved = localStorage.getItem("queenDenialPeriods");
     if (saved) denialPeriods = JSON.parse(saved);
-  } catch(e) { denialPeriods = []; }
+  } catch(e) {}
 }
 
 function saveDenialData() {
   localStorage.setItem("queenDenialPeriods", JSON.stringify(denialPeriods));
+}
+
+function toggleDay(dateStr) {
+  const openIndex = denialPeriods.findIndex(p => p.start && !p.end);
+
+  if (openIndex !== -1) {
+    // סיום תקופה
+    denialPeriods[openIndex].end = dateStr;
+    denialPeriods[openIndex].days = calculateDays(denialPeriods[openIndex].start, dateStr);
+    activeDenialStart = null;
+    setStatus(`✅ תקופה הסתיימה (${denialPeriods[openIndex].days} ימים)`);
+  } else {
+    // התחלת תקופה חדשה
+    denialPeriods.push({ start: dateStr, end: null, days: 0 });
+    activeDenialStart = dateStr;
+    setStatus("🔒 התחלת תקופת מניעה חדשה");
+  }
+  
+  saveDenialData();
+  renderCalendar();
+  updateDashboard();
 }
 
 function calculateDays(start, end) {
@@ -2185,59 +2196,60 @@ function calculateDays(start, end) {
   return Math.floor((e - s) / (86400000)) + 1;
 }
 
-function getTotalDenialDays() {
-  return denialPeriods.reduce((sum, p) => sum + (p.days || 0), 0);
+// שעון חי
+let timerInterval = null;
+
+function startLiveTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+
+  timerInterval = setInterval(() => {
+    if (!activeDenialStart) {
+      document.getElementById("liveTimer").textContent = "00:00:00";
+      document.getElementById("liveTimerStatus").textContent = "אין תקופה פעילה";
+      return;
+    }
+
+    const start = new Date(activeDenialStart);
+    const now = new Date();
+    const diff = Math.floor((now - start) / 1000);
+
+    const hours = Math.floor(diff / 3600);
+    const minutes = Math.floor((diff % 3600) / 60);
+    const seconds = diff % 60;
+
+    document.getElementById("liveTimer").textContent = 
+      `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+    
+    document.getElementById("liveTimerStatus").textContent = "תקופה פעילה";
+  }, 1000);
 }
 
-function getAverageReleaseDays() {
-  if (denialPeriods.length < 2) return 0;
-  return (getTotalDenialDays() / denialPeriods.length).toFixed(1);
-}
+function updateDashboard() {
+  // Streak + Score
+  let streak = typeof getStreak === "function" ? getStreak() : 0;
+  let score = typeof calculateLimorScore === "function" ? calculateLimorScore() : 0;
 
-function calculateLimorScore() {
-  const total = getTotalDenialDays();
-  const longest = denialPeriods.length ? Math.max(...denialPeriods.map(p => p.days || 0)) : 0;
-  return Math.floor(total * 9 + longest * 28 + Math.pow(longest, 1.6));
-}
+  document.getElementById("dashStreak").textContent = streak;
+  document.getElementById("dashScore").textContent = score;
 
-function toggleDay(dateStr) {
-  const openIndex = denialPeriods.findIndex(p => p.start && !p.end);
-  
-  if (openIndex !== -1) {
-    denialPeriods[openIndex].end = dateStr;
-    denialPeriods[openIndex].days = calculateDays(denialPeriods[openIndex].start, dateStr);
-    setStatus(`✅ תקופה הסתיימה (${denialPeriods[openIndex].days} ימים)`);
+  // מטלות
+  const checked = document.querySelectorAll('#tasksContainer input[type="checkbox"]:checked').length;
+  document.getElementById("dashTasks").innerHTML = checked > 0 
+    ? `<strong style="color:#ff6b9d;">${checked} מטלות מסומנות להיום</strong>` 
+    : `<span style="color:#888;">אין מטלות מסומנות</span>`;
+
+  // פקודה אחרונה
+  const display = document.getElementById("randomCommandDisplay");
+  const lastCmd = document.getElementById("dashLastCommand");
+  if (display && display.style.display !== "none" && display.textContent.trim()) {
+    let text = display.textContent.replace(/📱.*:|🔥.*:/, "").trim();
+    lastCmd.innerHTML = `<strong>${text}</strong>`;
   } else {
-    denialPeriods.push({ start: dateStr, end: null, days: 0 });
-    setStatus("🔒 התחלת תקופה חדשה");
+    lastCmd.innerHTML = `<span style="color:#888;">עדיין לא נבחרה פקודה</span>`;
   }
-  
-  saveDenialData();
-  renderCalendar();
-  renderPeriods();
-  updateStats();
-drawChart();
-}
 
-function updateStats() {
-  const total = getTotalDenialDays();
-  const longest = denialPeriods.length ? Math.max(...denialPeriods.map(p => p.days || 0)) : 0;
-  const avg = getAverageReleaseDays();
-  const score = calculateLimorScore();
-
-  const streakEl = document.getElementById("currentStreak");
-  const scoreEl = document.getElementById("limorScore");
-  const statsEl = document.getElementById("stats");
-
-  if (streakEl) streakEl.textContent = longest;
-  if (scoreEl) scoreEl.textContent = score;
-  if (statsEl) {
-    statsEl.innerHTML = `
-      סה"כ ימי מניעה: <strong>${total}</strong><br>
-      תקופה ארוכה ביותר: <strong>${longest}</strong> ימים<br>
-      ממוצע בין שחרורים: <strong>${avg || '-'}</strong> ימים
-    `;
-  }
+  // שעון חי
+  startLiveTimer();
 }
 
 function renderPeriods() {
