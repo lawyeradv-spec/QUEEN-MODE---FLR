@@ -202,6 +202,12 @@
       <h3>פקודה אחרונה</h3>
       <div id="dashLastCommand" style="font-size:1.1rem; color:#ff9ed4; min-height:80px;"></div>
     </div>
+
+    <!-- יומן אורגזמות -->
+    <div class="question" style="grid-column: 1 / -1;">
+      <h3>יומן אורגזמות</h3>
+      <div id="dashOrgasmLog" style="line-height:1.8; min-height:80px;"></div>
+    </div>
   </div>
 
   <div style="margin-top:30px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
@@ -246,6 +252,7 @@
       </label>
       <div style="grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap;">
         <button type="button" class="tool-btn" onclick="setGrokPreset()">Grok (מומלץ)</button>
+        <button type="button" class="tool-btn" onclick="setOllamaPreset()">Ollama</button>
         <button type="button" class="tool-btn" onclick="saveAiSettings()">שמור חיבור</button>
         <button type="button" class="tool-btn" onclick="testAIConnection()">בדוק חיבור</button>
       </div>
@@ -482,6 +489,28 @@
 
   <div id="calendar" style="background:rgba(0,0,0,0.35); padding:16px; border-radius:12px; border:1px solid var(--line); margin-bottom:24px;"></div>
 
+  <div class="question" style="margin-bottom:24px;">
+    <h3>הוספת אורגזמה ליומן</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:12px; align-items:end;">
+      <label class="field">
+        <span>תאריך</span>
+        <input type="date" id="orgasmDate">
+      </label>
+      <label class="field">
+        <span>דירוג</span>
+        <select id="orgasmRating">
+          <option value="1">★</option>
+          <option value="2">★★</option>
+          <option value="3" selected>★★★</option>
+          <option value="4">★★★★</option>
+          <option value="5">★★★★★</option>
+        </select>
+      </label>
+      <button type="button" class="main" onclick="addOrgasmLogEntry()" style="margin:0;">הוספה ליומן</button>
+    </div>
+    <div id="orgasmLogList" style="margin-top:14px; line-height:1.8;"></div>
+  </div>
+
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:18px;">
     <div class="question" style="text-align:center;">
       <h3>תקופת מניעה פעילה</h3>
@@ -532,7 +561,7 @@ window.onload = function() {
   createTasks();
   setTeaseTone(currentTeasingTone);
   if (typeof initNotifications === "function") initNotifications();
-  
+
   // הפעלת מסך הפתיחה
   showSplashScreen();
 };
@@ -762,6 +791,72 @@ window.onload = function() {
       setStatus("✅ Grok הוגדר");
     }
 
+    function setOllamaPreset() {
+      document.getElementById("aiEndpoint").value = "http://localhost:11434/api/chat";
+      document.getElementById("aiModel").value = document.getElementById("aiModel").value.trim() || "llama3.1:8b";
+      document.getElementById("aiApiKey").value = "";
+      document.getElementById("aiTemperature").value = 0.8;
+      document.getElementById("aiMaxTokens").value = 900;
+      document.getElementById("generatorMode").value = "external";
+      saveAiSettings();
+      setStatus("✅ Ollama הוגדר");
+    }
+
+    function getAiEndpointType(endpoint) {
+      const value = (endpoint || "").toLowerCase();
+      if (value.includes("/api/generate")) return "ollama-generate";
+      if (value.includes("/api/chat")) return "ollama-chat";
+      return "openai-chat";
+    }
+
+    function buildAiRequestBody(settings, messages, maxTokensOverride) {
+      const maxTokens = Math.min(8192, Math.max(16, maxTokensOverride || settings.maxTokens || 1500));
+      const temperature = Math.min(2, Math.max(0, settings.temperature));
+      const endpointType = getAiEndpointType(settings.endpoint);
+
+      if (endpointType === "ollama-chat") {
+        return {
+          model: settings.model,
+          messages,
+          stream: false,
+          keep_alive: "10m",
+          options: {
+            temperature,
+            num_predict: maxTokens
+          }
+        };
+      }
+
+      if (endpointType === "ollama-generate") {
+        return {
+          model: settings.model,
+          prompt: messages.map(message => `${message.role}: ${message.content}`).join("\n\n"),
+          stream: false,
+          keep_alive: "10m",
+          options: {
+            temperature,
+            num_predict: maxTokens
+          }
+        };
+      }
+
+      return {
+        model: settings.model,
+        messages,
+        temperature,
+        max_tokens: maxTokens
+      };
+    }
+
+    function readAiResponse(data) {
+      return (
+        data.choices?.[0]?.message?.content ||
+        data.message?.content ||
+        data.response ||
+        ""
+      ).trim();
+    }
+
     async function testAIConnection() {
       const settings = readAiSettingsFromForm();
       if (!settings.endpoint || !settings.model) {
@@ -777,17 +872,19 @@ window.onload = function() {
         const response = await fetch(settings.endpoint, {
           method: "POST",
           headers,
-          body: JSON.stringify({
-            model: settings.model,
-            messages: [{ role: "user", content: "שלום" }],
-            max_tokens: 10,
-            temperature: 0.2
-          })
+          body: JSON.stringify(buildAiRequestBody(
+            { ...settings, temperature: 0.2 },
+            [{ role: "user", content: "שלום" }],
+            24
+          ))
         });
 
         if (response.ok) {
+          const data = await response.json();
+          const text = readAiResponse(data);
+          if (!text) throw new Error("Empty AI response");
           setStatus("✅ חיבור AI תקין");
-          alert("✅ חיבור תקין!");
+          alert("✅ חיבור תקין והמודל החזיר תשובה!");
         } else {
           const errorText = await response.text();
           setStatus(`❌ שגיאת AI ${response.status}`);
@@ -838,9 +935,9 @@ window.onload = function() {
       const response = await fetch(settings.endpoint, {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          model: settings.model,
-          messages: [
+        body: JSON.stringify(buildAiRequestBody(
+          settings,
+          [
             {
               role: "system",
               content: [
@@ -852,9 +949,8 @@ window.onload = function() {
             },
             { role: "user", content: userPrompt }
           ],
-          temperature: Math.min(2, Math.max(0, settings.temperature)),
-          max_tokens: Math.min(8192, Math.max(64, settings.maxTokens))
-        })
+          settings.maxTokens
+        ))
       });
 
       if (!response.ok) {
@@ -863,7 +959,7 @@ window.onload = function() {
       }
 
       const data = await response.json();
-      return (data.choices?.[0]?.message?.content || data.message?.content || data.response || "").trim();
+      return readAiResponse(data);
     }
 
     async function tryExternalAI(prompt, outputHandler, fallbackHandler) {
@@ -2199,7 +2295,9 @@ if (!document.getElementById("command-style")) {
   } 
   else if (n === 6) {
     setTimeout(() => {
+      setDefaultOrgasmDate();
       renderCalendar();
+      renderOrgasmLog();
       updateStats();
       drawChart();
     }, 150);
@@ -2209,6 +2307,7 @@ if (!document.getElementById("command-style")) {
 // ====================== לוח שנה + שעון חי ======================
 let currentDate = new Date();
 let denialPeriods = [];
+let orgasmLog = [];
 let activeDenialStart = null;   // תאריך התחלה של תקופה פעילה
 let activeDenialStartTime = null; // זמן התחלה מדויק לשעון
 let pausedTimerText = "00:00:00";
@@ -2228,6 +2327,120 @@ function loadDenialData() {
 
 function saveDenialData() {
   localStorage.setItem("queenDenialPeriods", JSON.stringify(denialPeriods));
+}
+
+function loadOrgasmData() {
+  try {
+    const saved = localStorage.getItem("queenOrgasmLog");
+    orgasmLog = saved ? JSON.parse(saved) : [];
+    if (!Array.isArray(orgasmLog)) orgasmLog = [];
+  } catch(e) {
+    orgasmLog = [];
+  }
+}
+
+function saveOrgasmData() {
+  localStorage.setItem("queenOrgasmLog", JSON.stringify(orgasmLog));
+}
+
+function getTodayKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(dateStr) {
+  const date = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function getStars(rating) {
+  return "★".repeat(Math.max(1, Math.min(5, Number(rating) || 1)));
+}
+
+function isDateInDenialPeriod(dateStr) {
+  const today = getTodayKey();
+  return denialPeriods.some(period => {
+    if (!period.start) return false;
+    const end = period.end || today;
+    return dateStr >= period.start && dateStr <= end;
+  });
+}
+
+function setDefaultOrgasmDate() {
+  const input = document.getElementById("orgasmDate");
+  if (input && !input.value) input.value = getTodayKey();
+}
+
+function addOrgasmLogEntry() {
+  const date = document.getElementById("orgasmDate").value || getTodayKey();
+  const rating = Number(document.getElementById("orgasmRating").value) || 3;
+
+  if (!isDateInDenialPeriod(date)) {
+    alert("אפשר להוסיף אורגזמה רק לתאריך שנמצא בתוך תקופת מניעה.");
+    setStatus("התאריך לא נמצא בתוך תקופת מניעה");
+    return;
+  }
+
+  orgasmLog.push({
+    date,
+    rating: Math.max(1, Math.min(5, rating)),
+    createdAt: new Date().toISOString()
+  });
+
+  orgasmLog.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+  saveOrgasmData();
+  renderCalendar();
+  renderOrgasmLog();
+  updateDashboard();
+  setStatus("האורגזמה נוספה ליומן");
+}
+
+function removeOrgasmLogEntry(index) {
+  if (!confirm("למחוק את הרשומה הזו?")) return;
+  orgasmLog.splice(index, 1);
+  saveOrgasmData();
+  renderCalendar();
+  renderOrgasmLog();
+  updateDashboard();
+  setStatus("הרשומה נמחקה");
+}
+
+function renderOrgasmLog() {
+  const list = document.getElementById("orgasmLogList");
+  if (!list) return;
+
+  if (!orgasmLog.length) {
+    list.innerHTML = `<span style="color:#888;">עדיין אין רשומות ביומן</span>`;
+    return;
+  }
+
+  list.innerHTML = orgasmLog.map((entry, index) => `
+    <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; background:rgba(255,255,255,0.05); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:8px 0;">
+      <span><strong>${formatDisplayDate(entry.date)}</strong> <span style="color:#ffd700;">${getStars(entry.rating)}</span></span>
+      <button type="button" class="tool-btn" onclick="removeOrgasmLogEntry(${index})" style="padding:6px 10px;">מחקי</button>
+    </div>
+  `).join("");
+}
+
+function renderDashboardOrgasmLog() {
+  const container = document.getElementById("dashOrgasmLog");
+  if (!container) return;
+
+  if (!orgasmLog.length) {
+    container.innerHTML = `<span style="color:#888;">אין עדיין אורגזמות ביומן</span>`;
+    return;
+  }
+
+  container.innerHTML = orgasmLog.slice(0, 6).map(entry => `
+    <div style="display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding:6px 0;">
+      <span>${formatDisplayDate(entry.date)}</span>
+      <strong style="color:#ffd700;">${getStars(entry.rating)}</strong>
+    </div>
+  `).join("");
 }
 
 function calculateDays(startDate, endDate) {
@@ -2295,6 +2508,7 @@ function toggleDay(dateStr) {
   
   saveDenialData();
   renderCalendar();
+  renderOrgasmLog();
   updateStats();
   drawChart();
   startLiveTimer();
@@ -2355,6 +2569,7 @@ function updateDashboard() {
 
   // שעון חי
   startLiveTimer();
+  renderDashboardOrgasmLog();
 }
 
 function renderPeriods() {
@@ -2381,6 +2596,7 @@ function removePeriod(i) {
     pausedTimerStatus = activeDenialStart ? "תקופה פעילה עכשיו" : "אין תקופה פעילה";
     saveDenialData();
     renderCalendar();
+    renderOrgasmLog();
     renderPeriods();
     updateStats();
     drawChart();
@@ -2391,16 +2607,20 @@ function removePeriod(i) {
 function resetDenialCalendar() {
   if (confirm("למחוק את כל הנתונים?")) {
     denialPeriods = [];
+    orgasmLog = [];
     activeDenialStart = null;
     activeDenialStartTime = null;
     pausedTimerText = "00:00:00";
     pausedTimerStatus = "אין תקופה פעילה";
     saveDenialData();
+    saveOrgasmData();
     renderCalendar();
+    renderOrgasmLog();
     renderPeriods();
     updateStats();
     drawChart();
     startLiveTimer();
+    updateDashboard();
   }
 }
 
@@ -2437,14 +2657,18 @@ function renderCalendar() {
 
       const isStart = denialPeriods.some(p => p.start === dateStr);
       const isEnd = denialPeriods.some(p => p.end === dateStr);
+      const dayOrgasmEntries = orgasmLog.filter(entry => entry.date === dateStr);
+      const orgasmStars = dayOrgasmEntries.length
+        ? `<div style="color:#ffd700; font-size:0.8rem; margin-top:4px;">${getStars(Math.max(...dayOrgasmEntries.map(entry => Number(entry.rating) || 1)))}</div>`
+        : "";
 
       if (isStart) { symbol = '🔒'; bg = '#4a0022'; }
       if (isEnd)   { symbol = '🔓'; bg = '#003300'; }
 
       html += `
-        <td onclick="toggleDay('${dateStr}')" 
-            style="padding:14px 8px; cursor:pointer; border:1px solid #333; background:${bg};">
-          ${day}<br>${symbol}
+        <td onclick="toggleDay('${dateStr}')"
+            style="padding:14px 8px; cursor:pointer; border:1px solid #333; background:${bg}; vertical-align:top; min-height:64px;">
+          ${day}<br>${symbol}${orgasmStars}
         </td>`;
       day++;
     }
@@ -2457,6 +2681,7 @@ function renderCalendar() {
 
 // אתחול
 loadDenialData();
+loadOrgasmData();
 
 // ====================== גרף Progress Bar עם אנימציה ======================
 let animationFrame = null;
@@ -2534,6 +2759,7 @@ function drawChart(animated = true) {
 
 // אתחול
 loadDenialData();
+loadOrgasmData();
 
 // ====================== התראות יומיות ======================
 let notificationInterval = null;
@@ -2650,6 +2876,7 @@ function updateDashboard() {
   }
 
   startLiveTimer();
+  renderDashboardOrgasmLog();
 }
 
   </script>
