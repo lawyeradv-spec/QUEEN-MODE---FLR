@@ -120,24 +120,69 @@
     .rule { background: rgba(255,255,255,0.06); padding: 14px; margin: 10px 0; border-radius: 8px; border-right: 4px solid var(--accent); font-size: 1.03rem; }
     .empty-state { color: var(--muted); text-align: center; padding: 24px; border: 1px dashed var(--line); border-radius: 8px; }
 
+    .role-screen {
+      position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+      padding: 18px; background: radial-gradient(circle at top, rgba(233,79,154,0.28), transparent 34rem),
+      linear-gradient(145deg, #120d16, #21172a 54%, #101d22); color: white;
+    }
+    .role-card {
+      width: min(860px, 100%); border: 1px solid var(--line); border-radius: 8px; padding: clamp(22px, 4vw, 38px);
+      background: rgba(18,13,22,0.9); box-shadow: var(--shadow); text-align: center;
+    }
+    .role-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 24px 0; }
+    .role-choice {
+      min-height: 150px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; color: #fff;
+      background: rgba(255,255,255,0.07); font-size: clamp(1.4rem, 4vw, 2.1rem); font-weight: 900;
+    }
+    .role-choice.queen { background: linear-gradient(135deg, rgba(233,79,154,0.95), rgba(184,77,245,0.84)); }
+    .role-choice.slave { background: linear-gradient(135deg, rgba(56,216,189,0.35), rgba(30,38,48,0.92)); }
+    .room-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; text-align: right; }
+    .sync-dot { display:inline-block; width:10px; height:10px; border-radius:999px; background:#777; margin-left:6px; }
+    .sync-dot.online { background:#25d366; }
+    .slave-app { background: radial-gradient(circle at top left, rgba(56,216,189,0.18), transparent 30rem), rgba(16,24,28,0.94); }
+    .slave-hero { border-color: rgba(56,216,189,0.3); }
+    .slave-card { background: rgba(56,216,189,0.07); border: 1px solid rgba(56,216,189,0.22); }
+    .inbox-item { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.22); }
+    .small-muted { color: var(--muted); font-size: 0.92rem; }
+
     @media (max-width: 720px) {
       body { padding: 10px; }
       .hero { grid-template-columns: 1fr; }
       .nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .generator-panel, .ai-settings { grid-template-columns: 1fr; }
+      .role-actions, .room-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <!-- ====================== מסך פתיחה ====================== -->
-  <div id="splashScreen" style="position:fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle at center, #2a1a35, #120d16); display:flex; align-items:center; justify-content:center; z-index:9999; flex-direction:column; color:white; text-align:center;">
-    <div style="font-size:4.5rem; margin-bottom:20px;">👑</div>
-    <h1 style="font-size:2.8rem; margin:0; letter-spacing:2px;">לימור המלכה</h1>
-    <p style="margin:10px 0 40px; font-size:1.3rem; color:#ff9ed4;">FLR מלא - שליטה אישית</p>
-    
-    <div style="width:180px; height:3px; background:linear-gradient(90deg, transparent, #ff6b9d, transparent); margin-bottom:30px;"></div>
-    
-    <p style="font-size:1.1rem; color:#ccc;">טוען...</p>
+  <!-- ====================== מסך כניסה ראשי ====================== -->
+  <div id="splashScreen" class="role-screen">
+    <div class="role-card">
+      <div style="font-size:4.5rem; margin-bottom:14px;">👑</div>
+      <h1 style="font-size:clamp(2.2rem, 7vw, 4rem); margin:0;">QUEEN MODE</h1>
+      <p style="margin:10px 0 22px; font-size:1.25rem; color:#ff9ed4;">בחרי ממשק והתחברי לחדר מסונכרן</p>
+
+      <div class="room-grid">
+        <label class="field">
+          <span>קוד חדר פרטי</span>
+          <input type="text" id="roomCodeInput" placeholder="לדוגמה: limor-avi-2026" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>מפתח גישה</span>
+          <input type="password" id="roomSecretInput" placeholder="רק המלכה והעבד יודעים" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="role-actions">
+        <button type="button" class="role-choice queen" onclick="enterRole('queen')">👑 אני המלכה</button>
+        <button type="button" class="role-choice slave" onclick="enterRole('slave')">⛓️ אני העבד</button>
+      </div>
+
+      <div id="connectionStatus" class="small-muted">
+        <span class="sync-dot" id="syncDot"></span>
+        Firebase לא הוגדר עדיין, האפליקציה תעבוד מקומית עד שתוסיפי config.
+      </div>
+    </div>
   </div>
 
   <!-- ====================== תוכן ראשי ====================== -->
@@ -534,24 +579,368 @@
     </label>
     <small style="color: var(--muted);">התראה בכל יום בשעה 20:00 על סטטוס המניעה</small>
   </div>
+</div>
+
+<!-- ====================== ממשק העבד ====================== -->
+<div class="container slave-app" id="slaveApp" style="display:none;">
+  <header class="hero slave-hero">
+    <div>
+      <h1>⛓️ ממשק העבד</h1>
+      <p class="subtitle">דשבורד אישי מסונכרן עם המלכה בזמן אמת</p>
+    </div>
+    <div class="app-status" id="slaveStatus">ממתין לסנכרון</div>
+  </header>
+
+  <div style="margin:18px 0; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+    <button type="button" class="tool-btn" onclick="returnToRoleScreen()">החלפת משתמש</button>
+    <button type="button" class="tool-btn" onclick="syncFromFirebase()">רענון סנכרון</button>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:18px;">
+    <div class="question slave-card" style="grid-column:1 / -1; text-align:center;">
+      <h3>⏱️ תקופת מניעה חיה</h3>
+      <div id="slaveLiveTimer" style="font-size:3.4rem; font-weight:900; color:#38d6bd; letter-spacing:3px;">00:00:00</div>
+      <div id="slaveLiveTimerStatus" class="small-muted">אין תקופה פעילה</div>
+    </div>
+
+    <div class="question slave-card">
+      <h3>📜 פרוטוקול מלא</h3>
+      <div id="slaveProtocol" class="protocol empty-state">הפרוטוקול יופיע כאן אחרי שהמלכה תיצור או תסנכרן אותו.</div>
+    </div>
+
+    <div class="question slave-card">
+      <h3>📥 Inbox מהמלכה</h3>
+      <div id="slaveInbox" style="min-height:120px;"></div>
+    </div>
+
+    <div class="question slave-card">
+      <h3>✉️ שליחת הודעה למלכה</h3>
+      <textarea id="slaveReplyText" placeholder="כתוב הודעה קצרה ומכבדת למלכה..." style="min-height:120px;"></textarea>
+      <button type="button" class="main" onclick="sendSlaveReply()">שלח למלכה</button>
+    </div>
+
+    <div class="question slave-card">
+      <h3>✅ מטלות שהוקצו</h3>
+      <div id="slaveTasks" style="min-height:120px;"></div>
+    </div>
+
+    <div class="question slave-card">
+      <h3>📈 היסטוריית ביצועים</h3>
+      <div id="slaveHistory" style="min-height:120px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK: השאר Vanilla JS. עובד רק אחרי מילוי firebaseConfig למטה. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 
 <script>
+    // ====================== Firebase Realtime Sync ======================
+    // TODO FIREBASE CONFIG:
+    // הדביקי כאן את ה-config מתוך Firebase Console > Project settings > Web app.
+    // כל עוד השדות ריקים, האפליקציה תעבוד מקומית בלבד ללא סנכרון בין מכשירים.
+    const firebaseConfig = {
+      apiKey: "",
+      authDomain: "",
+      databaseURL: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: ""
+    };
+
+    let firebaseReady = false;
+    let db = null;
+    let currentRole = null;
+    let currentRoomCode = "";
+    let currentRoomSecret = "";
+    let roomRef = null;
+    let roomState = {};
+    let syncingRemoteState = false;
+    let slaveTimerInterval = null;
+    let queenTimerInterval = null;
+
+    function hasFirebaseConfig() {
+      return !!(firebaseConfig.apiKey && firebaseConfig.databaseURL && firebaseConfig.projectId);
+    }
+
+    async function initFirebaseIfConfigured() {
+      if (!hasFirebaseConfig() || typeof firebase === "undefined") {
+        setConnectionStatus("Firebase לא הוגדר, מצב מקומי בלבד", false);
+        return false;
+      }
+
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        if (firebase.auth) await firebase.auth().signInAnonymously();
+        firebaseReady = true;
+        setConnectionStatus("Firebase מחובר ומוכן לסנכרון", true);
+        return true;
+      } catch (error) {
+        console.warn(error);
+        setConnectionStatus("Firebase נכשל, מצב מקומי בלבד", false);
+        firebaseReady = false;
+        return false;
+      }
+    }
+
+    function setConnectionStatus(text, online) {
+      const status = document.getElementById("connectionStatus");
+      const dot = document.getElementById("syncDot");
+      if (status) status.innerHTML = `<span class="sync-dot ${online ? "online" : ""}" id="syncDot"></span>${text}`;
+      if (dot) dot.classList.toggle("online", !!online);
+      const slaveStatus = document.getElementById("slaveStatus");
+      if (slaveStatus) slaveStatus.textContent = text;
+    }
+
+    async function hashRoomSecret(secret) {
+      if (!window.crypto?.subtle) return btoa(unescape(encodeURIComponent(secret))).slice(0, 24);
+      const data = new TextEncoder().encode(secret);
+      const buffer = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function getRoomInputs() {
+      return {
+        room: (document.getElementById("roomCodeInput")?.value || localStorage.getItem("queenRoomCode") || "queen-mode-private").trim(),
+        secret: (document.getElementById("roomSecretInput")?.value || localStorage.getItem("queenRoomSecret") || "").trim()
+      };
+    }
+
+    async function enterRole(role) {
+      const { room, secret } = getRoomInputs();
+      if (!room || !secret) {
+        alert("יש למלא קוד חדר ומפתח גישה כדי לחבר שני מכשירים.");
+        return;
+      }
+
+      currentRole = role;
+      currentRoomCode = room.replace(/[.#$\[\]\/]/g, "-");
+      currentRoomSecret = secret;
+      localStorage.setItem("queenRoomCode", currentRoomCode);
+      localStorage.setItem("queenRoomSecret", currentRoomSecret);
+      localStorage.setItem("queenLastRole", currentRole);
+
+      document.getElementById("splashScreen").style.display = "none";
+      document.getElementById("mainApp").style.display = role === "queen" ? "block" : "none";
+      document.getElementById("slaveApp").style.display = role === "slave" ? "block" : "none";
+
+      await initFirebaseIfConfigured();
+      await connectRoom();
+
+      if (role === "queen") {
+        openTab(0);
+        publishQueenState("כניסת מלכה");
+      } else {
+        renderSlaveInterface(roomState);
+      }
+    }
+
+    function returnToRoleScreen() {
+      document.getElementById("mainApp").style.display = "none";
+      document.getElementById("slaveApp").style.display = "none";
+      document.getElementById("splashScreen").style.display = "flex";
+      currentRole = null;
+      if (slaveTimerInterval) clearInterval(slaveTimerInterval);
+    }
+
+    async function connectRoom() {
+      if (!firebaseReady || !db) {
+        loadLocalRoomState();
+        return;
+      }
+
+      const secretHash = await hashRoomSecret(currentRoomSecret);
+      roomRef = db.ref(`rooms/${currentRoomCode}`);
+      await roomRef.child("meta").update({
+        secretHash,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+      await roomRef.child(`presence/${currentRole}`).set({
+        role: currentRole,
+        online: true,
+        at: firebase.database.ServerValue.TIMESTAMP
+      });
+      roomRef.child(`presence/${currentRole}`).onDisconnect().update({ online: false, at: firebase.database.ServerValue.TIMESTAMP });
+
+      roomRef.on("value", snapshot => {
+        const value = snapshot.val() || {};
+        if (value.meta?.secretHash && value.meta.secretHash !== secretHash) {
+          setConnectionStatus("מפתח החדר לא תואם", false);
+          return;
+        }
+
+        roomState = value.state || {};
+        if (currentRole === "slave") renderSlaveInterface(roomState);
+        if (currentRole === "queen") applyRemoteReplies(value.replies || {});
+      });
+    }
+
+    function loadLocalRoomState() {
+      try {
+        roomState = JSON.parse(localStorage.getItem("queenSharedRoomState") || "{}");
+      } catch(e) {
+        roomState = {};
+      }
+    }
+
+    function saveLocalRoomState(state) {
+      localStorage.setItem("queenSharedRoomState", JSON.stringify(state));
+    }
+
+    function getAssignedTasks() {
+      return Array.from(document.querySelectorAll('#tasksContainer input[type="checkbox"]:checked'))
+        .map(input => input.parentElement.textContent.replace("×", "").trim())
+        .filter(Boolean);
+    }
+
+    function createQueenSnapshot(reason = "עדכון") {
+      const active = typeof getActivePeriod === "function" ? getActivePeriod() : null;
+      return {
+        reason,
+        updatedAt: new Date().toISOString(),
+        denial: {
+          periods: typeof denialPeriods !== "undefined" ? denialPeriods : [],
+          activeStart: active?.start || null,
+          activeStartTime: active?.startTime || activeDenialStartTime || null,
+          pausedTimerText: typeof pausedTimerText !== "undefined" ? pausedTimerText : "00:00:00",
+          pausedTimerStatus: typeof pausedTimerStatus !== "undefined" ? pausedTimerStatus : "אין תקופה פעילה"
+        },
+        protocol: {
+          text: currentProtocolText || document.getElementById("fullProtocol")?.innerText || "",
+          html: document.getElementById("fullProtocol")?.innerHTML || ""
+        },
+        tasks: getAssignedTasks(),
+        command: currentCommandText || document.getElementById("randomCommandDisplay")?.innerText || "",
+        orgasmLog: typeof orgasmLog !== "undefined" ? orgasmLog : [],
+        history: [
+          ...(roomState.history || []).slice(-20),
+          { type: "queen-update", text: reason, at: new Date().toISOString() }
+        ].slice(-30),
+        inbox: [
+          ...(roomState.inbox || []).slice(-20),
+          reason && reason !== "כניסת מלכה" ? { from: "queen", text: reason, at: new Date().toISOString() } : null
+        ].filter(Boolean).slice(-30)
+      };
+    }
+
+    async function publishQueenState(reason = "עדכון") {
+      if (syncingRemoteState || currentRole !== "queen") return;
+      const state = createQueenSnapshot(reason);
+      roomState = state;
+      saveLocalRoomState(state);
+
+      if (firebaseReady && roomRef) {
+        await roomRef.child("state").set(state);
+      }
+    }
+
+    async function syncFromFirebase() {
+      if (!firebaseReady || !roomRef) {
+        loadLocalRoomState();
+        renderSlaveInterface(roomState);
+        return;
+      }
+      const snapshot = await roomRef.child("state").get();
+      roomState = snapshot.val() || {};
+      renderSlaveInterface(roomState);
+    }
+
+    async function sendSlaveReply() {
+      const text = document.getElementById("slaveReplyText").value.trim();
+      if (!text) {
+        alert("כתוב הודעה לפני שליחה.");
+        return;
+      }
+
+      const reply = { from: "slave", text, at: new Date().toISOString() };
+      document.getElementById("slaveReplyText").value = "";
+      roomState.history = [...(roomState.history || []), { type: "slave-reply", text, at: reply.at }].slice(-30);
+
+      if (firebaseReady && roomRef) {
+        await roomRef.child("replies").push(reply);
+        await roomRef.child("state/history").set(roomState.history);
+      } else {
+        const replies = JSON.parse(localStorage.getItem("queenLocalReplies") || "[]");
+        replies.push(reply);
+        localStorage.setItem("queenLocalReplies", JSON.stringify(replies));
+        saveLocalRoomState(roomState);
+      }
+
+      renderSlaveInterface(roomState);
+    }
+
+    function applyRemoteReplies(replies) {
+      const replyList = Object.values(replies || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+      const last = replyList.slice(-5);
+      if (!last.length) return;
+      const text = last.map(item => `${formatDisplayDate(item.at?.slice(0, 10) || getTodayKey())}: ${item.text}`).join("\n");
+      const lastCmd = document.getElementById("dashLastCommand");
+      if (lastCmd) lastCmd.innerHTML = `<strong>הודעות אחרונות מהעבד:</strong><br>${text.replace(/\n/g, "<br>")}`;
+    }
+
+    function renderSlaveInterface(state = {}) {
+      const denial = state.denial || {};
+      const protocol = state.protocol || {};
+      document.getElementById("slaveProtocol").innerHTML = protocol.html || `<span style="color:#888;">אין פרוטוקול מסונכרן עדיין</span>`;
+      document.getElementById("slaveProtocol").classList.toggle("empty-state", !protocol.html);
+
+      document.getElementById("slaveTasks").innerHTML = (state.tasks || []).length
+        ? state.tasks.map((task, index) => `<label><input type="checkbox" onchange="markSlaveTaskDone('${index}', this.checked)"> ${task}</label>`).join("")
+        : `<span style="color:#888;">אין מטלות מוקצות כרגע</span>`;
+
+      document.getElementById("slaveInbox").innerHTML = (state.inbox || []).length
+        ? state.inbox.slice(-8).reverse().map(item => `<div class="inbox-item"><strong>${item.from === "queen" ? "המלכה" : "מערכת"}</strong><br>${item.text}<div class="small-muted">${formatDisplayDate(item.at?.slice(0, 10) || getTodayKey())}</div></div>`).join("")
+        : `<span style="color:#888;">אין הודעות חדשות</span>`;
+
+      const history = state.history || [];
+      document.getElementById("slaveHistory").innerHTML = history.length
+        ? history.slice(-10).reverse().map(item => `<div class="inbox-item">${item.text}<div class="small-muted">${formatDisplayDate(item.at?.slice(0, 10) || getTodayKey())}</div></div>`).join("")
+        : `<span style="color:#888;">אין היסטוריית ביצועים עדיין</span>`;
+
+      startSlaveTimer(denial);
+    }
+
+    async function markSlaveTaskDone(index, checked) {
+      const task = (roomState.tasks || [])[Number(index)];
+      if (!task || !checked) return;
+      const entry = { type: "task-done", text: `בוצעה מטלה: ${task}`, at: new Date().toISOString() };
+      roomState.history = [...(roomState.history || []), entry].slice(-30);
+      if (firebaseReady && roomRef) await roomRef.child("state/history").set(roomState.history);
+      saveLocalRoomState(roomState);
+      renderSlaveInterface(roomState);
+    }
+
+    function startSlaveTimer(denial = {}) {
+      if (slaveTimerInterval) clearInterval(slaveTimerInterval);
+      const timer = document.getElementById("slaveLiveTimer");
+      const status = document.getElementById("slaveLiveTimerStatus");
+      const tick = () => {
+        if (denial.activeStartTime) {
+          timer.textContent = formatElapsedFrom(denial.activeStartTime);
+          status.textContent = "תקופת מניעה פעילה עכשיו";
+          status.style.color = "#38d6bd";
+        } else {
+          timer.textContent = denial.pausedTimerText || "00:00:00";
+          status.textContent = denial.pausedTimerStatus || "אין תקופה פעילה";
+          status.style.color = "#cbb9c5";
+        }
+      };
+      tick();
+      if (denial.activeStartTime) slaveTimerInterval = setInterval(tick, 1000);
+    }
+
     // ====================== מסך פתיחה ======================
     function showSplashScreen() {
-      const splash = document.getElementById("splashScreen");
-      const mainApp = document.getElementById("mainApp");
-
-      // מעבר אוטומטי אחרי 2.8 שניות
-      setTimeout(() => {
-        splash.style.transition = "opacity 0.8s ease";
-        splash.style.opacity = "0";
-        
-        setTimeout(() => {
-          splash.style.display = "none";
-          mainApp.style.display = "block";
-          openTab(0); // פותח את הדשבורד כברירת מחדל
-        }, 800);
-      }, 2600);
+      document.getElementById("splashScreen").style.display = "flex";
+      document.getElementById("mainApp").style.display = "none";
+      document.getElementById("slaveApp").style.display = "none";
+      document.getElementById("roomCodeInput").value = localStorage.getItem("queenRoomCode") || "";
+      document.getElementById("roomSecretInput").value = localStorage.getItem("queenRoomSecret") || "";
+      initFirebaseIfConfigured();
     }
 
    // ====================== אתחול ======================
@@ -1057,6 +1446,7 @@ window.onload = function() {
       const tasks = Array.from(document.querySelectorAll('#tasksContainer input[type="checkbox"]')).map(input => input.checked);
       safeStorage.set(STORAGE_KEY, { answers, tasks });
       updateProgress();
+      if (currentRole === "queen") setTimeout(() => publishQueenState("עדכון מטלות או שאלון"), 0);
     }
 
     function updateProgress() {
@@ -1171,6 +1561,7 @@ window.onload = function() {
       saveState();
       openTab(5);
       setStatus("פרוטוקול נוצר");
+      publishQueenState("פרוטוקול חדש נוצר");
     }
 
     function sendProtocolToWhatsApp() {
@@ -1284,6 +1675,7 @@ window.onload = function() {
       document.getElementById("fullProtocol").innerHTML = html;
       document.getElementById("fullProtocol").classList.remove("empty-state");
       setStatus("AI כתב פרוטוקול אנושי");
+      publishQueenState("פרוטוקול אנושי חדש נוצר");
     }
 
     function copyProtocol() {
@@ -1400,6 +1792,7 @@ function addManualTask() {
   createTasks(); // רענון הרשימה
   input.value = "";
   setStatus("✅ מטלה ידנית נוספה");
+  publishQueenState("מטלה חדשה הוקצתה");
 }
 
 // שמירה וטעינה של מטלות ידניות
@@ -1424,6 +1817,7 @@ function removeCustomTask(idx) {
     saveCustomTasks();
     createTasks();
     setStatus("מטלה הוסרה");
+    publishQueenState("מטלה הוסרה");
   }
 }
 
@@ -1443,6 +1837,7 @@ function removeCustomTask(idx) {
       msg += "\nבצע הכל עד הערב.\nאי ביצוע = עונש.";
       document.getElementById("messageOutput").value = msg;
       setStatus("הודעת מטלות נוצרה");
+      publishQueenState("הודעת מטלות חדשה נוצרה");
     }
 
     const humanTasksParts = {
@@ -1553,6 +1948,7 @@ function removeCustomTask(idx) {
 
       document.getElementById("messageOutput").value = msg;
       setStatus("AI יצר הודעת מטלות אנושית");
+      publishQueenState("הודעת מטלות חדשה נוצרה");
     }
 
 // ====================== פקודות - פקודה נועזת ======================
@@ -1734,6 +2130,7 @@ function giveRandomCommandFromList(list, title, accentColor) {
 
   const randomIndex = Math.floor(Math.random() * list.length);
   const command = list[randomIndex];
+  currentCommandText = command;
 
   const display = document.getElementById("randomCommandDisplay");
   
@@ -1755,6 +2152,7 @@ function giveRandomCommandFromList(list, title, accentColor) {
   display.style.animation = "commandPop 0.65s ease";
   
   setStatus("🎲 פקודה נבחרה");
+  publishQueenState("פקודה חדשה נשלחה");
 }
 
 // אנימציה
@@ -1870,6 +2268,7 @@ if (!document.getElementById("command-style")) {
           const display = document.getElementById("randomCommandDisplay");
           display.style.display = "flex";
           display.innerHTML = `<div><strong style="color:#ff6b9d;">🤖 פקודת AI חיצוני:</strong><br><br>${currentCommandText}</div>`;
+          publishQueenState("פקודת AI חדשה נשלחה");
         },
         generateLocalAICommand
       );
@@ -1903,6 +2302,7 @@ if (!document.getElementById("command-style")) {
       display.style.display = "flex";
       display.innerHTML = `<div><strong style="color:#ff6b9d;">🤖 פקודת AI פנימי:</strong><br><br>${currentCommandText}</div>`;
       setStatus("AI יצר פקודה יצירתית");
+      publishQueenState("פקודת AI חדשה נשלחה");
     }
 
     const teasingMessages = {
@@ -2193,6 +2593,7 @@ if (!document.getElementById("command-style")) {
 
       document.getElementById("teasingOutput").value = `👑 הודעה מהמלכה:\n\n${lines.join("\n\n")}${getSignature(signature)}`;
       setStatus("AI יצר הודעה מותאמת");
+      publishQueenState("הודעת טיזינג חדשה נוצרה");
     }
 
     function setTeaseTone(tone) {
@@ -2208,6 +2609,7 @@ if (!document.getElementById("command-style")) {
       const message = pickRandom(messages, `tease-preset-${currentTeasingTone}`);
       document.getElementById("teasingOutput").value = `👑 הודעה מהמלכה:\n\n${message}`;
       setStatus("הודעת טיזינג נוצרה");
+      publishQueenState("הודעת טיזינג חדשה נוצרה");
     }
 
     function sendTeasingToWhatsApp() {
@@ -2226,6 +2628,7 @@ if (!document.getElementById("command-style")) {
       display.style.display = "flex";
       display.innerHTML = `<div><strong style="color:#ff6b9d;">👑 פקודה:</strong><br><br>${currentCommandText}</div>`;
       setStatus("פקודה נבחרה");
+      publishQueenState("פקודה חדשה נבחרה");
     }
 
     async function copyText(text) {
@@ -2397,6 +2800,7 @@ function addOrgasmLogEntry() {
   renderOrgasmLog();
   updateDashboard();
   setStatus("האורגזמה נוספה ליומן");
+  publishQueenState("רשומת אורגזמה חדשה נוספה");
 }
 
 function removeOrgasmLogEntry(index) {
@@ -2407,6 +2811,7 @@ function removeOrgasmLogEntry(index) {
   renderOrgasmLog();
   updateDashboard();
   setStatus("הרשומה נמחקה");
+  publishQueenState("רשומת אורגזמה נמחקה");
 }
 
 function renderOrgasmLog() {
@@ -2515,6 +2920,7 @@ function toggleDay(dateStr) {
   
   // עדכון מיידי של הדשבורד + שעון
   updateDashboard();
+  publishQueenState(activeDenialStart ? "תקופת מניעה חדשה התחילה" : "תקופת מניעה הסתיימה");
 }
 
 // שעון חי - גרסה משופרת
