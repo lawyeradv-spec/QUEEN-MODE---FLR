@@ -143,6 +143,7 @@
     .slave-hero { border-color: rgba(56,216,189,0.3); }
     .slave-card { background: rgba(56,216,189,0.07); border: 1px solid rgba(56,216,189,0.22); }
     .inbox-item { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.22); }
+    .message-body { white-space: pre-wrap; line-height: 1.75; margin-top: 6px; }
     .small-muted { color: var(--muted); font-size: 0.92rem; }
 
     @media (max-width: 720px) {
@@ -246,6 +247,12 @@
     <div class="question">
       <h3>פקודה אחרונה</h3>
       <div id="dashLastCommand" style="font-size:1.1rem; color:#ff9ed4; min-height:80px;"></div>
+    </div>
+
+    <!-- הודעות מהעבד -->
+    <div class="question">
+      <h3>הודעות מהעבד</h3>
+      <div id="queenInbox" style="font-size:1.05rem; min-height:80px;"></div>
     </div>
 
     <!-- יומן אורגזמות -->
@@ -642,13 +649,13 @@
     // הדביקי כאן את ה-config מתוך Firebase Console > Project settings > Web app.
     // כל עוד השדות ריקים, האפליקציה תעבוד מקומית בלבד ללא סנכרון בין מכשירים.
     const firebaseConfig = {
-      apiKey: "",
-      authDomain: "",
-      databaseURL: "",
-      projectId: "",
-      storageBucket: "",
-      messagingSenderId: "",
-      appId: ""
+      apiKey: "AIzaSyD-c-V-GPdlT7nw6uaALbjEY9Dnye_LkVQ",
+      authDomain: "queen-mode.firebaseapp.com",
+      databaseURL: "https://queen-mode-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "queen-mode",
+      storageBucket: "queen-mode.firebasestorage.app",
+      messagingSenderId: "99029738404",
+      appId: "1:99029738404:web:3f9a16cd36a51e54a65731"
     };
 
     let firebaseReady = false;
@@ -797,8 +804,67 @@
         .filter(Boolean);
     }
 
+    function escapeHtml(value = "") {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    function getQueenOutputText(id) {
+      const el = document.getElementById(id);
+      return (el?.value || el?.innerText || "").trim();
+    }
+
+    function buildQueenToSlaveInbox(reason = "עדכון") {
+      const now = new Date().toISOString();
+      const items = [];
+      const commandText = (currentCommandText || getQueenOutputText("randomCommandDisplay")).trim();
+      const taskMessage = getQueenOutputText("messageOutput");
+      const teaseMessage = getQueenOutputText("teasingOutput");
+      const protocolText = (currentProtocolText || document.getElementById("fullProtocol")?.innerText || "").trim();
+      const assignedTasks = getAssignedTasks();
+
+      if (commandText) {
+        items.push({ from: "queen", type: "command", title: "פקודה מהמלכה", text: commandText, at: now });
+      }
+
+      if (taskMessage) {
+        items.push({ from: "queen", type: "tasks-message", title: "הודעת מטלות מהמלכה", text: taskMessage, at: now });
+      } else if (assignedTasks.length) {
+        items.push({ from: "queen", type: "tasks", title: "מטלות שהוקצו", text: assignedTasks.map((task, index) => `${index + 1}. ${task}`).join("\n"), at: now });
+      }
+
+      if (teaseMessage) {
+        items.push({ from: "queen", type: "tease", title: "הודעה מהמלכה", text: teaseMessage, at: now });
+      }
+
+      if (protocolText && !document.getElementById("fullProtocol")?.classList.contains("empty-state")) {
+        items.push({ from: "queen", type: "protocol", title: "פרוטוקול מעודכן", text: protocolText, at: now });
+      }
+
+      if (!items.length && reason) {
+        items.push({ from: "queen", type: "status", title: "עדכון מהמלכה", text: reason, at: now });
+      }
+
+      return items.slice(-8);
+    }
+
     function createQueenSnapshot(reason = "עדכון") {
       const active = typeof getActivePeriod === "function" ? getActivePeriod() : null;
+      const commandText = (currentCommandText || getQueenOutputText("randomCommandDisplay")).trim();
+      const taskMessage = getQueenOutputText("messageOutput");
+      const teaseMessage = getQueenOutputText("teasingOutput");
+      const protocolText = currentProtocolText || document.getElementById("fullProtocol")?.innerText || "";
       return {
         reason,
         updatedAt: new Date().toISOString(),
@@ -810,20 +876,23 @@
           pausedTimerStatus: typeof pausedTimerStatus !== "undefined" ? pausedTimerStatus : "אין תקופה פעילה"
         },
         protocol: {
-          text: currentProtocolText || document.getElementById("fullProtocol")?.innerText || "",
+          text: protocolText,
           html: document.getElementById("fullProtocol")?.innerHTML || ""
         },
         tasks: getAssignedTasks(),
-        command: currentCommandText || document.getElementById("randomCommandDisplay")?.innerText || "",
+        command: commandText,
+        messages: {
+          command: commandText,
+          tasks: taskMessage,
+          tease: teaseMessage,
+          protocol: protocolText
+        },
         orgasmLog: typeof orgasmLog !== "undefined" ? orgasmLog : [],
         history: [
           ...(roomState.history || []).slice(-20),
           { type: "queen-update", text: reason, at: new Date().toISOString() }
         ].slice(-30),
-        inbox: [
-          ...(roomState.inbox || []).slice(-20),
-          reason && reason !== "כניסת מלכה" ? { from: "queen", text: reason, at: new Date().toISOString() } : null
-        ].filter(Boolean).slice(-30)
+        inbox: buildQueenToSlaveInbox(reason)
       };
     }
 
@@ -868,6 +937,7 @@
         replies.push(reply);
         localStorage.setItem("queenLocalReplies", JSON.stringify(replies));
         saveLocalRoomState(roomState);
+        renderQueenReplies(replies);
       }
 
       renderSlaveInterface(roomState);
@@ -875,11 +945,35 @@
 
     function applyRemoteReplies(replies) {
       const replyList = Object.values(replies || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
-      const last = replyList.slice(-5);
-      if (!last.length) return;
-      const text = last.map(item => `${formatDisplayDate(item.at?.slice(0, 10) || getTodayKey())}: ${item.text}`).join("\n");
-      const lastCmd = document.getElementById("dashLastCommand");
-      if (lastCmd) lastCmd.innerHTML = `<strong>הודעות אחרונות מהעבד:</strong><br>${text.replace(/\n/g, "<br>")}`;
+      renderQueenReplies(replyList);
+    }
+
+    function renderQueenReplies(replyList = null) {
+      const container = document.getElementById("queenInbox");
+      if (!container) return;
+
+      let replies = replyList;
+      if (!replies) {
+        try {
+          replies = JSON.parse(localStorage.getItem("queenLocalReplies") || "[]");
+        } catch(e) {
+          replies = [];
+        }
+      }
+
+      const last = (replies || []).slice(-8).reverse();
+      if (!last.length) {
+        container.innerHTML = `<span style="color:#888;">עדיין אין הודעות מהעבד</span>`;
+        return;
+      }
+
+      container.innerHTML = last.map(item => `
+        <div class="inbox-item">
+          <strong>העבד</strong>
+          <div class="message-body">${escapeHtml(item.text)}</div>
+          <div class="small-muted">${formatDateTime(item.at)}</div>
+        </div>
+      `).join("");
     }
 
     function renderSlaveInterface(state = {}) {
@@ -893,12 +987,18 @@
         : `<span style="color:#888;">אין מטלות מוקצות כרגע</span>`;
 
       document.getElementById("slaveInbox").innerHTML = (state.inbox || []).length
-        ? state.inbox.slice(-8).reverse().map(item => `<div class="inbox-item"><strong>${item.from === "queen" ? "המלכה" : "מערכת"}</strong><br>${item.text}<div class="small-muted">${formatDisplayDate(item.at?.slice(0, 10) || getTodayKey())}</div></div>`).join("")
+        ? state.inbox.slice(-8).reverse().map(item => `
+          <div class="inbox-item">
+            <strong>${escapeHtml(item.title || (item.from === "queen" ? "המלכה" : "מערכת"))}</strong>
+            <div class="message-body">${escapeHtml(item.text || "")}</div>
+            <div class="small-muted">${formatDateTime(item.at)}</div>
+          </div>
+        `).join("")
         : `<span style="color:#888;">אין הודעות חדשות</span>`;
 
       const history = state.history || [];
       document.getElementById("slaveHistory").innerHTML = history.length
-        ? history.slice(-10).reverse().map(item => `<div class="inbox-item">${item.text}<div class="small-muted">${formatDisplayDate(item.at?.slice(0, 10) || getTodayKey())}</div></div>`).join("")
+        ? history.slice(-10).reverse().map(item => `<div class="inbox-item"><div class="message-body">${escapeHtml(item.text)}</div><div class="small-muted">${formatDateTime(item.at)}</div></div>`).join("")
         : `<span style="color:#888;">אין היסטוריית ביצועים עדיין</span>`;
 
       startSlaveTimer(denial);
@@ -2976,6 +3076,7 @@ function updateDashboard() {
   // שעון חי
   startLiveTimer();
   renderDashboardOrgasmLog();
+  renderQueenReplies();
 }
 
 function renderPeriods() {
