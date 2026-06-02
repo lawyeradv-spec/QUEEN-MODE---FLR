@@ -3930,4 +3930,18 @@ function updateDashboard() {
   
   if (display && display.style.display !== "none" && display.textContent.trim()) {
     let text = display.textContent.replace(/📱.*:|🔥.*:/, "").trim();
-    lastCmd.innerHTML = `<strong>${text}</
+    lastCmd.innerHTML = `<strong>${text}</strong>`;
+  } else {
+    lastCmd.innerHTML = `<span style="color:#888;">עדיין לא נבחרה פקודה</span>`;
+  }
+
+  startLiveTimer();
+  renderDashboardOrgasmLog();
+  renderReleaseSummary();
+  renderDailyTip();
+  renderQueenReplies();
+}
+
+  </script>
+</body>
+</html>
