@@ -169,7 +169,7 @@
       background: rgba(10,7,12,0.86);
       backdrop-filter: blur(10px);
       opacity: 1;
-      transition: opacity 1.8s ease;
+      transition: opacity 2.7s ease;
       pointer-events: none;
     }
     .daily-tip-intro-backdrop.is-revealing { opacity: 0; }
@@ -182,14 +182,14 @@
       box-shadow: 0 34px 110px rgba(0,0,0,0.58), 0 0 90px rgba(255,218,94,0.22);
       transform-origin: center center;
       transition:
-        left 1.85s cubic-bezier(0.18, 0.82, 0.22, 1),
-        top 1.85s cubic-bezier(0.18, 0.82, 0.22, 1),
-        width 1.85s cubic-bezier(0.18, 0.82, 0.22, 1),
-        transform 1.85s cubic-bezier(0.18, 0.82, 0.22, 1),
+        left 2.8s cubic-bezier(0.18, 0.82, 0.22, 1),
+        top 2.8s cubic-bezier(0.18, 0.82, 0.22, 1),
+        width 2.8s cubic-bezier(0.18, 0.82, 0.22, 1),
+        transform 2.8s cubic-bezier(0.18, 0.82, 0.22, 1),
         opacity 0.45s ease,
-        box-shadow 1.85s ease,
-        background 1.85s ease,
-        border-color 1.85s ease;
+        box-shadow 2.8s ease,
+        background 2.8s ease,
+        border-color 2.8s ease;
     }
     .daily-tip-intro-overlay h3 { font-size: clamp(1.45rem, 4vw, 2.15rem); }
     .daily-tip-intro-overlay .message-body { font-size: clamp(1.15rem, 3vw, 1.55rem); }
@@ -305,7 +305,7 @@
 
   <div class="nav">
   <button type="button" onclick="openTab(0)" class="active">🏠 דשבורד</button>
-  <button type="button" onclick="openTab(1)">שאלון</button>
+  <button type="button" onclick="openTab(1)">רשימת משאלות</button>
   <button type="button" onclick="openTab(2)">מטלות</button>
   <button type="button" onclick="openTab(3)">פקודות</button>
   <button type="button" onclick="openTab(4)">טיזינג</button>
@@ -435,15 +435,21 @@
       <div class="toolbar">
         <div class="progress-shell">
           <div class="progress-label">
-            <span>התקדמות שאלון</span>
+            <span>התקדמות רשימת משאלות</span>
             <span id="progressText">0/0</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
         </div>
         <button type="button" class="tool-btn" onclick="resetAnswers()">איפוס תשובות</button>
       </div>
+      <div class="question">
+        <h3>הוספת משאלה חופשית</h3>
+        <textarea id="customWishInput" placeholder="כתבי כאן משאלה, כלל או ציפייה אישית שחשוב לך להוסיף לפרוטוקול..." style="min-height:110px;"></textarea>
+        <button type="button" class="tool-btn" onclick="addCustomWish()" style="margin-top:10px;">הוסף משאלה</button>
+        <div id="customWishList" style="margin-top:12px;"></div>
+      </div>
       <form id="flrForm"></form>
-      <button type="button" class="main" onclick="calculateResults()">יצירת פרוטוקול אישי לאבי</button>
+      <button type="button" class="main" onclick="calculateResults()">יצירת פרוטוקול אישי מתוך רשימת המשאלות</button>
     </div>
 
     <!-- Tab 2 -->
@@ -644,7 +650,7 @@
       </div>
       <button type="button" class="main" onclick="generateHumanProtocol()">AI כתיבת פרוטוקול בסגנון אנושי</button>
       <button type="button" class="tool-btn" onclick="copyProtocol()">העתק פרוטוקול</button>
-      <div id="fullProtocol" class="protocol empty-state">הפרוטוקול יופיע כאן אחרי מילוי השאלון.</div>
+      <div id="fullProtocol" class="protocol empty-state">הפרוטוקול יופיע כאן אחרי מילוי רשימת המשאלות.</div>
     </div>
 
 <!-- Tab 6 - לוח שנה משודרג -->
@@ -1382,6 +1388,7 @@
 window.onload = function() {
   loadAiSettings();
   createForm();
+  restoreSavedProtocol();
   createTasks();
   setTeaseTone(currentTeasingTone);
   if (typeof initNotifications === "function") initNotifications();
@@ -1397,6 +1404,7 @@ window.onload = function() {
     let currentProtocolScore = 0;
     let currentCommandText = "";
     let currentTeasingTone = "bold";
+    let customWishes = [];
     const STORAGE_KEY = "queenModeState";
     const AI_SETTINGS_KEY = "queenModeAiSettings";
     const generationHistory = {};
@@ -1513,7 +1521,7 @@ window.onload = function() {
         protocol: [
           "סיכום כללים",
           "הסכם התנהלות ביתי",
-          "תרגום תשובות השאלון להרגלים",
+          "תרגום רשימת המשאלות להרגלים",
           "מסמך אישי לאבי",
           "מסגרת ברורה להמשך"
         ]
@@ -1879,9 +1887,20 @@ window.onload = function() {
       });
 
       const tasks = Array.from(document.querySelectorAll('#tasksContainer input[type="checkbox"]')).map(input => input.checked);
-      safeStorage.set(STORAGE_KEY, { answers, tasks });
+      const protocolEl = document.getElementById("fullProtocol");
+      const hasProtocol = protocolEl && !protocolEl.classList.contains("empty-state");
+      const previous = getSavedState();
+      const protocol = hasProtocol
+        ? {
+            text: currentProtocolText || protocolEl.innerText || "",
+            html: protocolEl.innerHTML || "",
+            rules: currentProtocolRules,
+            score: currentProtocolScore
+          }
+        : (previous.protocol || null);
+      safeStorage.set(STORAGE_KEY, { answers, tasks, customWishes, protocol });
       updateProgress();
-      if (currentRole === "queen") setTimeout(() => publishQueenState("עדכון מטלות או שאלון"), 0);
+      if (currentRole === "queen") setTimeout(() => publishQueenState("עדכון מטלות או רשימת משאלות"), 0);
     }
 
     function updateProgress() {
@@ -1890,7 +1909,60 @@ window.onload = function() {
       const percent = total ? Math.round((answered / total) * 100) : 0;
       document.getElementById("progressText").textContent = `${answered}/${total}`;
       document.getElementById("progressBar").style.width = `${percent}%`;
-      setStatus(answered === total ? "השאלון מלא" : `${percent}% מהשאלון הושלם`);
+      setStatus(answered === total ? "רשימת המשאלות מלאה" : `${percent}% מרשימת המשאלות הושלם`);
+    }
+
+    function renderCustomWishes() {
+      const list = document.getElementById("customWishList");
+      if (!list) return;
+
+      if (!customWishes.length) {
+        list.innerHTML = `<span style="color:#888;">אין משאלות חופשיות עדיין</span>`;
+        return;
+      }
+
+      list.innerHTML = customWishes.map((wish, index) => `
+        <div class="inbox-item" style="display:flex; gap:12px; justify-content:space-between; align-items:flex-start;">
+          <div class="message-body" style="margin-top:0;">${escapeHtml(wish)}</div>
+          <button type="button" class="tool-btn" onclick="removeCustomWish(${index})" style="padding:6px 10px; min-height:34px;">מחק</button>
+        </div>
+      `).join("");
+    }
+
+    function addCustomWish() {
+      const input = document.getElementById("customWishInput");
+      const text = input?.value.trim();
+      if (!text) {
+        alert("כתבי משאלה לפני ההוספה.");
+        return;
+      }
+
+      customWishes.push(text);
+      input.value = "";
+      renderCustomWishes();
+      saveState();
+      setStatus("משאלה נוספה לרשימה");
+    }
+
+    function removeCustomWish(index) {
+      customWishes.splice(index, 1);
+      renderCustomWishes();
+      saveState();
+      setStatus("משאלה נמחקה");
+    }
+
+    function restoreSavedProtocol() {
+      const saved = getSavedState();
+      if (!saved.protocol?.html) return;
+
+      currentProtocolText = saved.protocol.text || "";
+      currentProtocolRules = Array.isArray(saved.protocol.rules) ? saved.protocol.rules : [];
+      currentProtocolScore = Number(saved.protocol.score) || 0;
+
+      const protocolEl = document.getElementById("fullProtocol");
+      if (!protocolEl) return;
+      protocolEl.innerHTML = saved.protocol.html;
+      protocolEl.classList.remove("empty-state");
     }
 
     const questions = [
@@ -1917,6 +1989,7 @@ window.onload = function() {
       const form = document.getElementById("flrForm");
       form.innerHTML = "";
       const saved = getSavedState().answers || {};
+      customWishes = Array.isArray(getSavedState().customWishes) ? getSavedState().customWishes : [];
 
       questions.forEach(q => {
         const div = document.createElement("div");
@@ -1933,6 +2006,7 @@ window.onload = function() {
       });
 
       form.addEventListener("change", saveState);
+      renderCustomWishes();
       updateProgress();
     }
 
@@ -1952,6 +2026,11 @@ window.onload = function() {
         }
       });
 
+      customWishes.forEach(wish => {
+        const cleanWish = wish.trim();
+        if (cleanWish) rules.push(cleanWish);
+      });
+
       if (answered < questions.length) {
         alert("❗ אנא עני על כל השאלות");
         return;
@@ -1964,11 +2043,11 @@ window.onload = function() {
       let html = `
         <h2>👑 פרוטוקול FLR רשמי</h2>
         <p style="text-align:center; font-size:1.35em; color:#ffccff;">רמת שליטה: <strong>${score}/10</strong></p>
-        <div class="section-title">הוראות מחייבות</div>
+        <div class="section-title">הוראות ומשאלות מחייבות</div>
       `;
 
       rules.forEach(rule => {
-        html += `<div class="rule">${rule}</div>`;
+        html += `<div class="rule">${escapeHtml(rule)}</div>`;
         protocolText += `• ${rule}\n`;
       });
 
@@ -2017,7 +2096,7 @@ window.onload = function() {
       style: {
         warm: [
           "אני רוצה שזה יהיה ברור, אבל גם אישי: אני מובילה את הדינמיקה בינינו, ואתה מצופה להיות קשוב, נוכח וממושמע.",
-          "הבחירות בשאלון מגדירות את הדרך שבה אני רוצה שתתנהל, לא כרשימה יבשה בלבד אלא כהבנה יומיומית של המקום שלך מולי.",
+          "הבחירות ברשימת המשאלות מגדירות את הדרך שבה אני רוצה שתתנהל, לא כרשימה יבשה בלבד אלא כהבנה יומיומית של המקום שלך מולי.",
           "אני רוצה שהפרוטוקול הזה ירגיש ברור מספיק לביצוע ואישי מספיק כדי שתזכור למה הוא נכתב.",
           "הדבר החשוב מבחינתי הוא עקביות: שתדע מה מצופה ממך גם כשאני לא מזכירה."
         ],
@@ -2068,7 +2147,7 @@ window.onload = function() {
 
     function generateHumanProtocol() {
       if (!currentProtocolRules.length) {
-        alert("קודם צרי פרוטוקול מהשאלון");
+        alert("קודם צרי פרוטוקול מרשימת המשאלות");
         return;
       }
 
@@ -2101,7 +2180,7 @@ window.onload = function() {
         <h2>פרוטוקול בסגנון אנושי</h2>
         ${paragraphs.map(text => `<p>${text}</p>`).join("")}
         <div class="section-title">הכללים שנבחרו</div>
-        ${selectedRules.map(rule => `<div class="rule">${rule}</div>`).join("")}
+        ${selectedRules.map(rule => `<div class="rule">${escapeHtml(rule)}</div>`).join("")}
         ${closing.map(text => `<p>${text}</p>`).join("")}
         ${signature ? `<p><strong>${signature}</strong></p>` : ""}
         <button class="main whatsapp-btn" onclick="sendProtocolToWhatsApp()">שלח פרוטוקול בוואטסאפ</button>
@@ -2109,6 +2188,7 @@ window.onload = function() {
 
       document.getElementById("fullProtocol").innerHTML = html;
       document.getElementById("fullProtocol").classList.remove("empty-state");
+      saveState();
       setStatus("AI כתב פרוטוקול אנושי");
       publishQueenState("פרוטוקול אנושי חדש נוצר");
     }
@@ -3098,13 +3178,18 @@ if (!document.getElementById("command-style")) {
       document.querySelectorAll('#flrForm input[type="radio"]').forEach(input => {
         input.checked = false;
       });
+      customWishes = [];
+      renderCustomWishes();
       currentProtocolText = "";
       currentProtocolRules = [];
       currentProtocolScore = 0;
       document.getElementById("fullProtocol").className = "protocol empty-state";
-      document.getElementById("fullProtocol").textContent = "הפרוטוקול יופיע כאן אחרי מילוי השאלון.";
-      saveState();
-      setStatus("התשובות אופסו");
+      document.getElementById("fullProtocol").textContent = "הפרוטוקול יופיע כאן אחרי מילוי רשימת המשאלות.";
+      const answers = {};
+      const tasks = Array.from(document.querySelectorAll('#tasksContainer input[type="checkbox"]')).map(input => input.checked);
+      safeStorage.set(STORAGE_KEY, { answers, tasks, customWishes, protocol: null });
+      updateProgress();
+      setStatus("רשימת המשאלות אופסה");
     }
 
   function openTab(n) {
@@ -3121,7 +3206,7 @@ if (!document.getElementById("command-style")) {
   });
 
   // עדכון סטטוס
-  const tabNames = ["דשבורד", "שאלון", "מטלות", "פקודות", "טיזינג", "פרוטוקול", "לוח שנה 👑"];
+  const tabNames = ["דשבורד", "רשימת משאלות", "מטלות", "פקודות", "טיזינג", "פרוטוקול", "לוח שנה 👑"];
   setStatus(tabNames[n] || "QUEEN MODE");
 
   // פעולות מיוחדות לטאבים
@@ -3443,8 +3528,8 @@ function playDailyTipIntro() {
       card.classList.remove("is-intro-target");
       backdrop.remove();
       overlay.remove();
-    }, 1900);
-  }, 2300);
+    }, 2850);
+  }, 2800);
 }
 
 function renderSlaveQueenOrgasmLog(state = roomState) {
