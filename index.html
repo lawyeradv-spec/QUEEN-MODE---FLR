@@ -240,6 +240,38 @@
     .slave-app { background: radial-gradient(circle at top left, rgba(56,216,189,0.18), transparent 30rem), rgba(16,24,28,0.94); }
     .slave-hero { border-color: rgba(56,216,189,0.3); }
     .slave-card { background: rgba(56,216,189,0.07); border: 1px solid rgba(56,216,189,0.22); }
+    .slave-card-header { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .slave-card-header h3 { margin:0; }
+    .collapsible-content.is-collapsed { display:none; }
+    .slave-alert-card {
+      grid-column: 1 / -1;
+      border-color: rgba(255,218,94,0.5);
+      background: linear-gradient(135deg, rgba(255,218,94,0.13), rgba(56,216,189,0.09));
+      box-shadow: 0 16px 42px rgba(0,0,0,0.24);
+    }
+    .slave-alert-card.is-empty { opacity: 0.72; }
+    .slave-alert-popup {
+      position: fixed;
+      z-index: 9998;
+      width: min(720px, calc(100vw - 28px));
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-color: rgba(255,218,94,0.62);
+      background: linear-gradient(135deg, rgba(26,35,34,0.98), rgba(42,31,29,0.98));
+      box-shadow: 0 34px 110px rgba(0,0,0,0.58), 0 0 90px rgba(255,218,94,0.22);
+      pointer-events: none;
+      transition:
+        left 2.2s cubic-bezier(0.18, 0.82, 0.22, 1),
+        top 2.2s cubic-bezier(0.18, 0.82, 0.22, 1),
+        width 2.2s cubic-bezier(0.18, 0.82, 0.22, 1),
+        transform 2.2s cubic-bezier(0.18, 0.82, 0.22, 1),
+        opacity 0.35s ease,
+        box-shadow 2.2s ease;
+    }
+    .slave-alert-popup.is-settling {
+      box-shadow: 0 16px 42px rgba(0,0,0,0.24);
+    }
     .inbox-item { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.22); }
     .message-body { white-space: pre-wrap; line-height: 1.75; margin-top: 6px; }
     .small-muted { color: var(--muted); font-size: 0.92rem; }
@@ -300,7 +332,13 @@
         <h1>לימור המלכה</h1>
         <p class="subtitle">FLR מלא - לוח שליטה אישי</p>
       </div>
-      <div class="app-status" id="appStatus">מוכן לעבודה</div>
+      <div style="display:grid; gap:8px; justify-items:end;">
+        <div class="app-status" id="appStatus">מוכן לעבודה</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+          <button type="button" class="tool-btn" onclick="scheduleNotificationTest()">בדיקת התראה</button>
+          <button type="button" class="tool-btn" onclick="logoutSession()">יציאה</button>
+        </div>
+      </div>
     </header>
 
   <div class="nav">
@@ -728,6 +766,8 @@
     <button type="button" class="tool-btn" id="slaveReturnButton" onclick="returnToRoleScreen()">חזרה למסך כניסה</button>
     <button type="button" class="tool-btn" id="slaveBackToQueenButton" onclick="returnQueenFromSlaveView()" style="display:none;">חזרה למלכה</button>
     <button type="button" class="tool-btn" onclick="syncFromFirebase()">רענון סנכרון</button>
+    <button type="button" class="tool-btn" onclick="scheduleNotificationTest()">בדיקת התראה</button>
+    <button type="button" class="tool-btn" onclick="logoutSession()">יציאה</button>
   </div>
 
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:18px;">
@@ -737,14 +777,29 @@
       <div id="slaveLiveTimerStatus" class="small-muted">אין תקופה פעילה</div>
     </div>
 
-    <div class="question slave-card">
-      <h3>📜 פרוטוקול מלא</h3>
-      <div id="slaveProtocol" class="protocol empty-state">הפרוטוקול יופיע כאן אחרי שהמלכה תיצור או תסנכרן אותו.</div>
+    <div id="slaveRealtimeAlertCard" class="question slave-card slave-alert-card is-empty">
+      <h3>התראה בזמן אמת מהמלכה</h3>
+      <div id="slaveRealtimeAlert" class="message-body">אין התראה חדשה כרגע</div>
     </div>
 
     <div class="question slave-card">
-      <h3>📥 Inbox מהמלכה</h3>
-      <div id="slaveInbox" style="min-height:120px;"></div>
+      <div class="slave-card-header">
+        <h3>📜 פרוטוקול מלא</h3>
+        <button type="button" class="tool-btn" onclick="toggleSlaveCard('slaveProtocolWrap', this)">צמצם</button>
+      </div>
+      <div id="slaveProtocolWrap" class="collapsible-content">
+        <div id="slaveProtocol" class="protocol empty-state">הפרוטוקול יופיע כאן אחרי שהמלכה תיצור או תסנכרן אותו.</div>
+      </div>
+    </div>
+
+    <div class="question slave-card">
+      <div class="slave-card-header">
+        <h3>📥 Inbox מהמלכה</h3>
+        <button type="button" class="tool-btn" onclick="toggleSlaveCard('slaveInboxWrap', this)">צמצם</button>
+      </div>
+      <div id="slaveInboxWrap" class="collapsible-content">
+        <div id="slaveInbox" style="min-height:120px;"></div>
+      </div>
     </div>
 
     <div class="question slave-card">
@@ -756,6 +811,7 @@
     <div class="question slave-card">
       <h3>✅ מטלות שהוקצו</h3>
       <div id="slaveTasks" style="min-height:120px;"></div>
+      <div id="slaveTaskReportStatus" class="small-muted" style="margin-top:10px;"></div>
     </div>
 
     <div class="question slave-card">
@@ -802,6 +858,10 @@
     let syncingRemoteState = false;
     let slaveTimerInterval = null;
     let queenTimerInterval = null;
+    let slaveTaskReportTimer = null;
+    let slaveAlertPopupTimer = null;
+    let pendingSlaveTaskReport = [];
+    const ACTIVE_SESSION_KEY = "queenActiveSession";
 
     function hasFirebaseConfig() {
       return !!(firebaseConfig.apiKey && firebaseConfig.databaseURL && firebaseConfig.projectId);
@@ -850,6 +910,49 @@
         secret: (document.getElementById("roomSecretInput")?.value || localStorage.getItem("queenRoomSecret") || "").trim(),
         userCode: (document.getElementById("userAccessInput")?.value || "").trim()
       };
+    }
+
+    function saveActiveSession(role, room, secret, userCode) {
+      localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({
+        role,
+        room,
+        secret,
+        userCode,
+        savedAt: new Date().toISOString()
+      }));
+    }
+
+    function clearActiveSession() {
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
+    }
+
+    function getActiveSession() {
+      try {
+        return JSON.parse(localStorage.getItem(ACTIVE_SESSION_KEY) || "null");
+      } catch(e) {
+        return null;
+      }
+    }
+
+    async function resumeActiveSession() {
+      const session = getActiveSession();
+      if (!session?.room || !session?.secret || !session?.userCode || !session?.role) return;
+      if (currentRole) return;
+      document.getElementById("roomCodeInput").value = session.room;
+      document.getElementById("roomSecretInput").value = session.secret;
+      document.getElementById("userAccessInput").value = session.userCode;
+      await enterRole(session.role, { restoring: true });
+    }
+
+    async function ensureActiveRealtimeSession() {
+      if (!getActiveSession()) return;
+      if (!currentRole) {
+        await resumeActiveSession();
+        return;
+      }
+      if (firebaseReady && db && currentRoomCode) {
+        await connectRoom();
+      }
     }
 
     function getLocalAccessMeta(roomCode) {
@@ -949,7 +1052,7 @@
       return true;
     }
 
-    async function enterRole(role) {
+    async function enterRole(role, options = {}) {
       const { room, secret, userCode } = getRoomInputs();
       if (!room || !secret || !userCode) {
         alert("יש למלא קוד חדר, מפתח גישה וקוד משתמש.");
@@ -982,13 +1085,31 @@
 
       initMessageNotifications();
       await connectRoom();
+      saveActiveSession(role, room, secret, userCode);
 
       if (role === "queen") {
         openTab(0);
-        publishQueenState("כניסת מלכה");
+        setStatus(options.restoring ? "הסשן שוחזר וסונכרן" : "ממשק מלכה סונכרן");
       } else {
         renderSlaveInterface(roomState);
       }
+    }
+
+    function logoutSession() {
+      clearActiveSession();
+      if (roomRef) {
+        try { roomRef.off(); } catch(e) {}
+      }
+      if (slaveTimerInterval) clearInterval(slaveTimerInterval);
+      if (timerInterval) clearInterval(timerInterval);
+      currentRole = null;
+      currentUserAccess = "";
+      isQueenUserSession = false;
+      document.getElementById("mainApp").style.display = "none";
+      document.getElementById("slaveApp").style.display = "none";
+      document.getElementById("splashScreen").style.display = "flex";
+      document.getElementById("userAccessInput").value = "";
+      setConnectionStatus("המשתמש יצא. התחברות מחדש נדרשת.", !!firebaseReady);
     }
 
     function returnToRoleScreen() {
@@ -1023,6 +1144,54 @@
       openTab(0);
     }
 
+    function applyRemoteQueenState(state = {}) {
+      syncingRemoteState = true;
+      try {
+        roomState = state || {};
+
+        const denial = roomState.denial || {};
+        if (Array.isArray(denial.periods)) {
+          denialPeriods = denial.periods;
+          const active = denialPeriods.find(p => p.start && !p.end);
+          activeDenialStart = active ? active.start : (denial.activeStart || null);
+          activeDenialStartTime = active ? (active.startTime || denial.activeStartTime || null) : (denial.activeStartTime || null);
+          pausedTimerText = denial.pausedTimerText || "00:00:00";
+          pausedTimerStatus = denial.pausedTimerStatus || (activeDenialStart ? "תקופה פעילה עכשיו" : "אין תקופה פעילה");
+          if (typeof saveDenialData === "function") saveDenialData();
+        }
+
+        if (Array.isArray(roomState.orgasmLog)) {
+          orgasmLog = roomState.orgasmLog;
+          if (typeof saveOrgasmData === "function") saveOrgasmData();
+        }
+
+        if (Array.isArray(roomState.slaveReleaseLog)) {
+          slaveReleaseLog = roomState.slaveReleaseLog;
+          if (typeof saveSlaveReleaseData === "function") saveSlaveReleaseData();
+        }
+
+        if (roomState.protocol?.html) {
+          const protocolEl = document.getElementById("fullProtocol");
+          if (protocolEl) {
+            protocolEl.innerHTML = roomState.protocol.html;
+            protocolEl.classList.remove("empty-state");
+          }
+          currentProtocolText = roomState.protocol.text || "";
+        }
+
+        saveLocalRoomState(roomState);
+        if (typeof renderCalendar === "function") renderCalendar();
+        if (typeof renderOrgasmLog === "function") renderOrgasmLog();
+        if (typeof renderPeriods === "function") renderPeriods();
+        if (typeof updateStats === "function") updateStats();
+        if (typeof drawChart === "function") drawChart(false);
+        if (typeof startLiveTimer === "function") startLiveTimer();
+        if (typeof updateDashboard === "function") updateDashboard();
+      } finally {
+        syncingRemoteState = false;
+      }
+    }
+
     async function connectRoom() {
       if (!firebaseReady || !db) {
         loadLocalRoomState();
@@ -1042,6 +1211,15 @@
       });
       roomRef.child(`presence/${currentRole}`).onDisconnect().update({ online: false, at: firebase.database.ServerValue.TIMESTAMP });
 
+      const stateSnapshot = await roomRef.child("state").get();
+      const initialState = stateSnapshot.val() || {};
+      if (Object.keys(initialState).length) {
+        roomState = initialState;
+        if (currentRole === "queen") applyRemoteQueenState(roomState);
+        if (currentRole === "slave") renderSlaveInterface(roomState);
+      }
+
+      roomRef.off("value");
       roomRef.on("value", snapshot => {
         const value = snapshot.val() || {};
         if (value.meta?.secretHash && value.meta.secretHash !== secretHash) {
@@ -1051,7 +1229,10 @@
 
         roomState = value.state || {};
         if (currentRole === "slave") renderSlaveInterface(roomState);
-        if (currentRole === "queen") applyRemoteReplies(value.replies || {});
+        if (currentRole === "queen") {
+          applyRemoteQueenState(roomState);
+          applyRemoteReplies(value.replies || {});
+        }
       });
     }
 
@@ -1097,35 +1278,38 @@
     function buildQueenToSlaveInbox(reason = "עדכון") {
       const now = new Date().toISOString();
       const items = [];
+      const existingInbox = Array.isArray(roomState.inbox) ? roomState.inbox : [];
       const commandText = (currentCommandText || getQueenOutputText("randomCommandDisplay")).trim();
       const taskMessage = getQueenOutputText("messageOutput");
       const teaseMessage = getQueenOutputText("teasingOutput");
       const protocolText = (currentProtocolText || document.getElementById("fullProtocol")?.innerText || "").trim();
       const assignedTasks = getAssignedTasks();
+      const reasonText = String(reason || "");
 
-      if (commandText) {
+      if (reasonText.includes("פקוד") && commandText) {
         items.push({ from: "queen", type: "command", title: "פקודה מהמלכה", text: commandText, at: now });
       }
 
-      if (taskMessage) {
-        items.push({ from: "queen", type: "tasks-message", title: "הודעת מטלות מהמלכה", text: taskMessage, at: now });
-      } else if (assignedTasks.length) {
-        items.push({ from: "queen", type: "tasks", title: "מטלות שהוקצו", text: assignedTasks.map((task, index) => `${index + 1}. ${task}`).join("\n"), at: now });
+      if (reasonText.includes("מטלה") || reasonText.includes("מטלות")) {
+        const taskText = taskMessage || assignedTasks.map((task, index) => `${index + 1}. ${task}`).join("\n");
+        if (taskText) items.push({ from: "queen", type: "tasks", title: "מטלות שהוקצו", text: taskText, at: now });
       }
 
-      if (teaseMessage) {
+      if (reasonText.includes("טיזינג") && teaseMessage) {
         items.push({ from: "queen", type: "tease", title: "הודעה מהמלכה", text: teaseMessage, at: now });
       }
 
-      if (protocolText && !document.getElementById("fullProtocol")?.classList.contains("empty-state")) {
+      if (reasonText.includes("פרוטוקול") && protocolText && !document.getElementById("fullProtocol")?.classList.contains("empty-state")) {
         items.push({ from: "queen", type: "protocol", title: "פרוטוקול מעודכן", text: protocolText, at: now });
       }
 
-      if (!items.length && reason) {
-        items.push({ from: "queen", type: "status", title: "עדכון מהמלכה", text: reason, at: now });
-      }
+      const merged = [...existingInbox];
+      items.forEach(item => {
+        const last = merged[merged.length - 1];
+        if (!last || last.type !== item.type || last.text !== item.text) merged.push(item);
+      });
 
-      return items.slice(-8);
+      return merged.slice(-12);
     }
 
     function createQueenSnapshot(reason = "עדכון") {
@@ -1163,6 +1347,7 @@
           tease: teaseMessage,
           protocol: protocolText
         },
+        completedTasks: roomState.completedTasks || {},
         orgasmLog: typeof orgasmLog !== "undefined" ? orgasmLog : [],
         slaveReleaseLog: typeof slaveReleaseLog !== "undefined" ? slaveReleaseLog : [],
         history: [
@@ -1258,6 +1443,34 @@
       new Notification(title, options);
     }
 
+    async function scheduleNotificationTest() {
+      await initMessageNotifications();
+      if (!("Notification" in window)) {
+        alert("הדפדפן הזה לא תומך בהתראות.");
+        return;
+      }
+      if (Notification.permission !== "granted") {
+        alert("צריך לאשר התראות בדפדפן לפני בדיקה.");
+        return;
+      }
+
+      const message = "בדיקת התראה נשלחה לעוד 10 שניות. העבר את האפליקציה לרקע והשאר אותה פתוחה.";
+      if (currentRole === "slave") {
+        const status = document.getElementById("slaveStatus");
+        if (status) status.textContent = message;
+      } else {
+        setStatus(message);
+      }
+
+      setTimeout(() => {
+        showReceivedNotification(
+          "בדיקת התראה",
+          "אם קיבלת את זה כשהאפליקציה ברקע, הדפדפן עדיין מריץ את האפליקציה.",
+          "queen-background-test"
+        );
+      }, 10000);
+    }
+
     function getMessageKey(item) {
       return [item?.at || "", item?.type || "", item?.text || ""].join("|");
     }
@@ -1281,7 +1494,61 @@
       const previous = localStorage.getItem(storageKey);
       localStorage.setItem(storageKey, key);
       if (!previous || previous === key) return;
+      renderSlaveRealtimeAlert(last, true);
       showReceivedNotification(last.title || "הודעה חדשה מהמלכה", last.text || "התקבלה הודעה חדשה", "slave-queen-message");
+    }
+
+    function toggleSlaveCard(contentId, button) {
+      const content = document.getElementById(contentId);
+      if (!content) return;
+      const collapsed = content.classList.toggle("is-collapsed");
+      if (button) button.textContent = collapsed ? "פתח" : "צמצם";
+    }
+
+    function renderSlaveRealtimeAlert(item = null, animate = false) {
+      const card = document.getElementById("slaveRealtimeAlertCard");
+      const container = document.getElementById("slaveRealtimeAlert");
+      if (!card || !container) return;
+
+      if (!item) {
+        card.classList.add("is-empty");
+        container.textContent = "אין התראה חדשה כרגע";
+        return;
+      }
+
+      card.classList.remove("is-empty");
+      card.dataset.messageKey = getMessageKey(item);
+      container.innerHTML = `
+        <strong>${escapeHtml(item.title || "הודעה מהמלכה")}</strong>
+        <div>${escapeHtml(item.text || "")}</div>
+        <div class="small-muted">${formatDateTime(item.at)}</div>
+      `;
+
+      if (!animate) return;
+      showSlaveAlertPopup(card);
+    }
+
+    function showSlaveAlertPopup(targetCard) {
+      const existing = document.getElementById("slaveAlertPopup");
+      if (existing) existing.remove();
+      if (slaveAlertPopupTimer) clearTimeout(slaveAlertPopupTimer);
+
+      const rect = targetCard.getBoundingClientRect();
+      const popup = targetCard.cloneNode(true);
+      popup.id = "slaveAlertPopup";
+      popup.classList.add("slave-alert-popup");
+      popup.classList.remove("is-empty");
+      popup.style.margin = "0";
+      document.body.appendChild(popup);
+
+      slaveAlertPopupTimer = setTimeout(() => {
+        popup.classList.add("is-settling");
+        popup.style.left = `${rect.left}px`;
+        popup.style.top = `${rect.top}px`;
+        popup.style.width = `${rect.width}px`;
+        popup.style.transform = "translate(0, 0)";
+        setTimeout(() => popup.remove(), 2300);
+      }, 5200);
     }
 
     function applyRemoteReplies(replies) {
@@ -1324,8 +1591,12 @@
       document.getElementById("slaveProtocol").innerHTML = protocol.html || `<span style="color:#888;">אין פרוטוקול מסונכרן עדיין</span>`;
       document.getElementById("slaveProtocol").classList.toggle("empty-state", !protocol.html);
 
+      const completedTasks = state.completedTasks || {};
       document.getElementById("slaveTasks").innerHTML = (state.tasks || []).length
-        ? state.tasks.map((task, index) => `<label><input type="checkbox" onchange="markSlaveTaskDone('${index}', this.checked)"> ${escapeHtml(task)}</label>`).join("")
+        ? state.tasks.map((task, index) => {
+            const checked = completedTasks[index] ? "checked" : "";
+            return `<label><input type="checkbox" ${checked} onchange="markSlaveTaskDone('${index}', this.checked)"> ${escapeHtml(task)}</label>`;
+          }).join("")
         : `<span style="color:#888;">אין מטלות מוקצות כרגע</span>`;
 
       document.getElementById("slaveInbox").innerHTML = (state.inbox || []).length
@@ -1346,12 +1617,63 @@
 
     async function markSlaveTaskDone(index, checked) {
       const task = (roomState.tasks || [])[Number(index)];
-      if (!task || !checked) return;
-      const entry = { type: "task-done", text: `בוצעה מטלה: ${task}`, at: new Date().toISOString() };
-      roomState.history = [...(roomState.history || []), entry].slice(-30);
-      if (firebaseReady && roomRef) await roomRef.child("state/history").set(roomState.history);
+      if (!task) return;
+
+      roomState.completedTasks = { ...(roomState.completedTasks || {}), [index]: !!checked };
+      if (firebaseReady && roomRef) await roomRef.child(`state/completedTasks/${index}`).set(!!checked);
       saveLocalRoomState(roomState);
+
+      if (checked) {
+        const taskText = String(task);
+        if (!pendingSlaveTaskReport.includes(taskText)) pendingSlaveTaskReport.push(taskText);
+        scheduleSlaveTaskReport();
+      }
       renderSlaveInterface(roomState);
+    }
+
+    function getCompletedSlaveTaskTexts() {
+      const completed = roomState.completedTasks || {};
+      return (roomState.tasks || []).filter((task, index) => completed[index]);
+    }
+
+    function buildSlaveTaskReport(tasks) {
+      return [
+        "דיווח למלכה לימור: המטלות בוצעו בהתאם להוראותייך.",
+        "",
+        ...tasks.map((task, index) => `${index + 1}. ${task}`),
+        "",
+        "אם המלכה מעוניינת שאבצע מטלה או מטלות נוספות - רק תשלחי בלחיצה."
+      ].join("\n");
+    }
+
+    function scheduleSlaveTaskReport() {
+      const status = document.getElementById("slaveTaskReportStatus");
+      if (status) status.textContent = "מכין דיווח למלכה...";
+      if (slaveTaskReportTimer) clearTimeout(slaveTaskReportTimer);
+      slaveTaskReportTimer = setTimeout(sendSlaveTaskReport, 900);
+    }
+
+    async function sendSlaveTaskReport() {
+      const tasks = pendingSlaveTaskReport.length ? [...pendingSlaveTaskReport] : getCompletedSlaveTaskTexts();
+      pendingSlaveTaskReport = [];
+      if (!tasks.length) return;
+      const text = buildSlaveTaskReport(tasks);
+      const reply = { from: "slave", type: "task-report", text, at: new Date().toISOString() };
+      roomState.history = [...(roomState.history || []), { type: "task-report", text, at: reply.at }].slice(-30);
+
+      if (firebaseReady && roomRef) {
+        await roomRef.child("replies").push(reply);
+        await roomRef.child("state/history").set(roomState.history);
+      } else {
+        const replies = JSON.parse(localStorage.getItem("queenLocalReplies") || "[]");
+        replies.push(reply);
+        localStorage.setItem("queenLocalReplies", JSON.stringify(replies));
+        renderQueenReplies(replies);
+      }
+
+      saveLocalRoomState(roomState);
+      const status = document.getElementById("slaveTaskReportStatus");
+      if (status) status.textContent = "דיווח נשלח למלכה.";
     }
 
     function startSlaveTimer(denial = {}) {
@@ -1395,6 +1717,11 @@ window.onload = function() {
 
   // הפעלת מסך הפתיחה
   showSplashScreen();
+  setTimeout(resumeActiveSession, 250);
+  window.addEventListener("pageshow", () => setTimeout(ensureActiveRealtimeSession, 200));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") setTimeout(ensureActiveRealtimeSession, 200);
+  });
 };
   </script>
   
