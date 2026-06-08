@@ -1086,6 +1086,7 @@
 
       initMessageNotifications();
       await connectRoom();
+      await cleanupReadMessagesForCurrentRole();
       saveActiveSession(role, room, secret, userCode);
 
       if (role === "queen") {
@@ -1096,7 +1097,8 @@
       }
     }
 
-    function logoutSession() {
+    async function logoutSession() {
+      await cleanupReadMessagesForCurrentRole();
       clearActiveSession();
       if (roomRef) {
         try { roomRef.off(); } catch(e) {}
@@ -1473,7 +1475,65 @@
     }
 
     function getMessageKey(item) {
-      return [item?.at || "", item?.type || "", item?.text || ""].join("|");
+      return item?._key || [item?.at || "", item?.type || "", item?.text || ""].join("|");
+    }
+
+    function getReadSet(storageKey) {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
+      } catch(e) {
+        return new Set();
+      }
+    }
+
+    function saveReadSet(storageKey, values) {
+      localStorage.setItem(storageKey, JSON.stringify([...values]));
+    }
+
+    async function cleanupReadMessagesForCurrentRole() {
+      if (!currentRoomCode || !currentRole) return;
+
+      if (currentRole === "queen") {
+        const storageKey = `queenReadReplies:${currentRoomCode}`;
+        const readSet = getReadSet(storageKey);
+        if (!readSet.size) return;
+
+        let replies = roomReplies;
+        if (!replies.length) {
+          try {
+            replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || "[]");
+          } catch(e) {
+            replies = [];
+          }
+        }
+        const removed = replies.filter(item => readSet.has(getMessageKey(item)));
+        roomReplies = replies.filter(item => !readSet.has(getMessageKey(item)));
+
+        if (firebaseReady && roomRef && removed.length) {
+          const updates = {};
+          removed.forEach(item => {
+            if (item._key) updates[`replies/${item._key}`] = null;
+          });
+          if (Object.keys(updates).length) await roomRef.update(updates);
+        }
+
+        localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(roomReplies));
+        localStorage.removeItem(storageKey);
+        renderQueenReplies(roomReplies);
+        return;
+      }
+
+      if (currentRole === "slave") {
+        const storageKey = `slaveReadInbox:${currentRoomCode}`;
+        const readSet = getReadSet(storageKey);
+        if (!readSet.size) return;
+
+        roomState.inbox = (roomState.inbox || []).filter(item => !readSet.has(getMessageKey(item)));
+        if (firebaseReady && roomRef) await roomRef.child("state/inbox").set(roomState.inbox);
+        saveLocalRoomState(roomState);
+        localStorage.removeItem(storageKey);
+        renderSlaveInterface(roomState);
+      }
     }
 
     function notifyQueenForNewReply(replyList = []) {
@@ -1553,7 +1613,9 @@
     }
 
     function applyRemoteReplies(replies) {
-      const replyList = Object.values(replies || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+      const replyList = Object.entries(replies || {})
+        .map(([key, value]) => ({ ...(value || {}), _key: key }))
+        .sort((a, b) => String(a.at).localeCompare(String(b.at)));
       roomReplies = replyList;
       try {
         localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(replyList));
@@ -1578,19 +1640,47 @@
         }
       }
 
-      const last = (replies || []).slice(-8).reverse();
+      const readSet = getReadSet(`queenReadReplies:${currentRoomCode}`);
+      const visibleReplies = (replies || []).filter(item => !readSet.has(getMessageKey(item)));
+      const last = visibleReplies.slice(-8).reverse();
       if (!last.length) {
         container.innerHTML = `<span style="color:#888;">עדיין אין הודעות מהעבד</span>`;
         return;
       }
 
       container.innerHTML = last.map(item => `
-        <div class="inbox-item">
-          <strong>העבד</strong>
+        <div class="inbox-item" style="display:grid; gap:8px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+            <strong>העבד</strong>
+            <button type="button" class="tool-btn" onclick="markQueenReplyRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
+          </div>
           <div class="message-body">${escapeHtml(item.text)}</div>
           <div class="small-muted">${formatDateTime(item.at)}</div>
         </div>
       `).join("");
+    }
+
+    async function markQueenReplyRead(encodedMessageKey) {
+      const messageKey = decodeURIComponent(encodedMessageKey);
+      const readSet = getReadSet(`queenReadReplies:${currentRoomCode}`);
+      readSet.add(messageKey);
+      saveReadSet(`queenReadReplies:${currentRoomCode}`, readSet);
+
+      const source = roomReplies.find(item => getMessageKey(item) === messageKey);
+      const receipt = {
+        from: "queen",
+        type: "read-receipt-queen",
+        title: "המלכה קראה את ההודעה",
+        text: "המלכה לימור קראה את ההודעה ששלחת.",
+        at: new Date().toISOString(),
+        sourceKey: messageKey
+      };
+
+      roomState.inbox = [...(roomState.inbox || []), receipt].slice(-12);
+      if (firebaseReady && roomRef) await roomRef.child("state/inbox").set(roomState.inbox);
+      saveLocalRoomState(roomState);
+      renderQueenReplies();
+      setStatus(source ? "ההודעה סומנה כנקראה" : "סומן כנקרא");
     }
 
     function renderSlaveInterface(state = {}) {
@@ -1607,10 +1697,15 @@
           }).join("")
         : `<span style="color:#888;">אין מטלות מוקצות כרגע</span>`;
 
-      document.getElementById("slaveInbox").innerHTML = (state.inbox || []).length
-        ? state.inbox.slice(-8).reverse().map(item => `
-          <div class="inbox-item">
-            <strong>${escapeHtml(item.title || (item.from === "queen" ? "המלכה" : "מערכת"))}</strong>
+      const slaveReadSet = getReadSet(`slaveReadInbox:${currentRoomCode}`);
+      const visibleInbox = (state.inbox || []).filter(item => !slaveReadSet.has(getMessageKey(item)));
+      document.getElementById("slaveInbox").innerHTML = visibleInbox.length
+        ? visibleInbox.slice(-8).reverse().map(item => `
+          <div class="inbox-item" style="display:grid; gap:8px;">
+            <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+              <strong>${escapeHtml(item.title || (item.from === "queen" ? "המלכה" : "מערכת"))}</strong>
+              <button type="button" class="tool-btn" onclick="markSlaveInboxRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
+            </div>
             <div class="message-body">${escapeHtml(item.text || "")}</div>
             <div class="small-muted">${formatDateTime(item.at)}</div>
           </div>
@@ -1621,6 +1716,34 @@
       renderReleaseSummary(state);
       notifySlaveForNewInbox(state.inbox || []);
       startSlaveTimer(denial);
+    }
+
+    async function markSlaveInboxRead(encodedMessageKey) {
+      const messageKey = decodeURIComponent(encodedMessageKey);
+      const readSet = getReadSet(`slaveReadInbox:${currentRoomCode}`);
+      readSet.add(messageKey);
+      saveReadSet(`slaveReadInbox:${currentRoomCode}`, readSet);
+
+      const source = (roomState.inbox || []).find(item => getMessageKey(item) === messageKey);
+      const sourceTitle = source?.title || "הודעה מהמלכה";
+      const sourceText = source?.text ? `\n\n${source.text}` : "";
+      const receipt = {
+        from: "slave",
+        type: "read-receipt-slave",
+        text: `העבד קרא את ההודעה שנשלחה מהמלכה: ${sourceTitle}${sourceText}`,
+        at: new Date().toISOString(),
+        sourceKey: messageKey
+      };
+
+      if (firebaseReady && roomRef) {
+        await roomRef.child("replies").push(receipt);
+      } else {
+        roomReplies = [...roomReplies, receipt].slice(-30);
+        localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(roomReplies));
+      }
+
+      renderSlaveInterface(roomState);
+      setConnectionStatus("ההודעה סומנה כנקראה ונשלח אישור למלכה.", !!firebaseReady);
     }
 
     async function markSlaveTaskDone(index, checked) {
