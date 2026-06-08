@@ -1519,6 +1519,10 @@
       localStorage.setItem(storageKey, JSON.stringify([...values]));
     }
 
+    function isReadReceipt(item = {}) {
+      return String(item.type || "").startsWith("read-receipt");
+    }
+
     async function cleanupReadMessagesForCurrentRole() {
       if (!currentRoomCode || !currentRole) return;
 
@@ -1724,6 +1728,12 @@
       saveReadSet(`queenReadReplies:${currentRoomCode}`, readSet);
 
       const source = roomReplies.find(item => getMessageKey(item) === messageKey);
+      if (isReadReceipt(source)) {
+        renderQueenReplies();
+        setStatus("אישור הקריאה נמחק מהתצוגה");
+        return;
+      }
+
       const receipt = {
         from: "queen",
         type: "read-receipt-queen",
@@ -1816,6 +1826,12 @@
       saveReadSet(`slaveReadInbox:${currentRoomCode}`, readSet);
 
       const source = (roomState.inbox || []).find(item => getMessageKey(item) === messageKey);
+      if (isReadReceipt(source)) {
+        renderSlaveInterface(roomState);
+        setConnectionStatus("אישור הקריאה נמחק מהתצוגה.", !!firebaseReady);
+        return;
+      }
+
       const sourceTitle = source?.title || "הודעה מהמלכה";
       const sourceText = source?.text ? `\n\n${source.text}` : "";
       const receipt = {
