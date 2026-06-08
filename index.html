@@ -868,6 +868,8 @@
     let queenTimerInterval = null;
     let slaveTaskReportTimer = null;
     let slaveAlertPopupTimer = null;
+    let queenReplyNotificationsPrimed = false;
+    let slaveInboxNotificationsPrimed = false;
     let pendingSlaveTaskReport = [];
     const ACTIVE_SESSION_KEY = "queenActiveSession";
 
@@ -1071,6 +1073,8 @@
       currentRoomCode = room.replace(/[.#$\[\]\/]/g, "-");
       currentRoomSecret = secret;
       currentUserAccess = userCode;
+      queenReplyNotificationsPrimed = false;
+      slaveInboxNotificationsPrimed = false;
       localStorage.setItem("queenRoomCode", currentRoomCode);
       localStorage.setItem("queenRoomSecret", currentRoomSecret);
       localStorage.setItem("queenLastRole", currentRole);
@@ -1434,6 +1438,23 @@
       }
     }
 
+    function withTimeout(promise, timeoutMs = 1200) {
+      return Promise.race([
+        promise,
+        new Promise(resolve => setTimeout(() => resolve(null), timeoutMs))
+      ]);
+    }
+
+    async function getNotificationRegistration() {
+      if (!("serviceWorker" in navigator)) return null;
+      try {
+        return await withTimeout(navigator.serviceWorker.ready);
+      } catch(error) {
+        console.warn("Service worker was not ready for notification", error);
+        return null;
+      }
+    }
+
     async function showReceivedNotification(title, body, tag) {
       if (!("Notification" in window) || Notification.permission !== "granted") return;
       const options = {
@@ -1443,8 +1464,8 @@
         icon: "https://i.imgur.com/queen-crown.png"
       };
       try {
-        if ("serviceWorker" in navigator) {
-          const registration = await navigator.serviceWorker.ready;
+        const registration = await getNotificationRegistration();
+        if (registration) {
           await registration.showNotification(title, options);
           return;
         }
@@ -1545,13 +1566,21 @@
     }
 
     function notifyQueenForNewReply(replyList = []) {
-      if (currentRole !== "queen" || !replyList.length) return;
+      if (currentRole !== "queen") return;
+      if (!replyList.length) {
+        queenReplyNotificationsPrimed = true;
+        return;
+      }
       const last = replyList[replyList.length - 1];
       const key = getMessageKey(last);
       const storageKey = `queenLastReplySeen:${currentRoomCode}`;
       const previous = localStorage.getItem(storageKey);
       localStorage.setItem(storageKey, key);
-      if (!previous || previous === key) return;
+      if (!queenReplyNotificationsPrimed) {
+        queenReplyNotificationsPrimed = true;
+        return;
+      }
+      if (previous === key) return;
       showReceivedNotification(getReplyNotificationTitle(last), getReplyNotificationBody(last), "queen-slave-reply");
     }
 
@@ -1568,13 +1597,21 @@
     }
 
     function notifySlaveForNewInbox(inbox = []) {
-      if (currentRole !== "slave" || !inbox.length) return;
+      if (currentRole !== "slave") return;
+      if (!inbox.length) {
+        slaveInboxNotificationsPrimed = true;
+        return;
+      }
       const last = inbox[inbox.length - 1];
       const key = getMessageKey(last);
       const storageKey = `slaveLastInboxSeen:${currentRoomCode}`;
       const previous = localStorage.getItem(storageKey);
       localStorage.setItem(storageKey, key);
-      if (!previous || previous === key) return;
+      if (!slaveInboxNotificationsPrimed) {
+        slaveInboxNotificationsPrimed = true;
+        return;
+      }
+      if (previous === key) return;
       renderSlaveRealtimeAlert(last, true);
       showReceivedNotification(last.title || "הודעה חדשה מהמלכה", last.text || "התקבלה הודעה חדשה", "slave-queen-message");
     }
