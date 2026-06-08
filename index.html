@@ -399,6 +399,13 @@
       <div id="queenInbox" style="font-size:1.05rem; min-height:80px;"></div>
     </div>
 
+    <div class="question">
+      <h3>שליחת הודעה חופשית לעבד</h3>
+      <textarea id="queenFreeMessageText" placeholder="כתבי הודעה חופשית לעבד..." style="min-height:120px;"></textarea>
+      <button type="button" class="main" onclick="sendQueenFreeMessage()">שלחי לעבד</button>
+      <div id="queenFreeMessageStatus" class="small-muted" style="margin-top:10px; min-height:22px;"></div>
+    </div>
+
     <!-- יומן אורגזמות -->
     <div class="question" style="grid-column: 1 / -1;">
       <h3>יומן אורגזמות</h3>
@@ -1390,7 +1397,7 @@
         return;
       }
 
-      const reply = { from: "slave", text, at: new Date().toISOString() };
+      const reply = { from: "slave", type: "slave-message", title: "הודעה מהעבד", text, at: new Date().toISOString() };
       document.getElementById("slaveReplyText").value = "";
       roomState.history = [...(roomState.history || []), { type: "slave-reply", text, at: reply.at }].slice(-30);
 
@@ -1398,8 +1405,9 @@
         await roomRef.child("replies").push(reply);
         await roomRef.child("state/history").set(roomState.history);
       } else {
-        const replies = JSON.parse(localStorage.getItem("queenLocalReplies") || "[]");
+        const replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || localStorage.getItem("queenLocalReplies") || "[]");
         replies.push(reply);
+        localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(replies));
         localStorage.setItem("queenLocalReplies", JSON.stringify(replies));
         saveLocalRoomState(roomState);
         renderQueenReplies(replies);
@@ -1544,7 +1552,19 @@
       const previous = localStorage.getItem(storageKey);
       localStorage.setItem(storageKey, key);
       if (!previous || previous === key) return;
-      showReceivedNotification("הודעה חדשה מהעבד", last.text || "התקבלה הודעה חדשה", "queen-slave-reply");
+      showReceivedNotification(getReplyNotificationTitle(last), getReplyNotificationBody(last), "queen-slave-reply");
+    }
+
+    function getReplyNotificationTitle(item = {}) {
+      if (item.type === "task-report") return "דיווח מטלות מהעבד";
+      if (item.type === "read-receipt-slave") return "אישור קריאה מהעבד";
+      return item.title || "הודעה חדשה מהעבד";
+    }
+
+    function getReplyNotificationBody(item = {}) {
+      const text = String(item.text || item.message || item.body || item.content || "").trim();
+      if (!text || text.toLowerCase() === "spam") return "התקבלה הודעה חדשה מהעבד";
+      return text.length > 180 ? `${text.slice(0, 180)}...` : text;
     }
 
     function notifySlaveForNewInbox(inbox = []) {
@@ -1651,7 +1671,7 @@
       container.innerHTML = last.map(item => `
         <div class="inbox-item" style="display:grid; gap:8px;">
           <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
-            <strong>העבד</strong>
+            <strong>${escapeHtml(item.title || "העבד")}</strong>
             <button type="button" class="tool-btn" onclick="markQueenReplyRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
           </div>
           <div class="message-body">${escapeHtml(item.text)}</div>
@@ -1681,6 +1701,40 @@
       saveLocalRoomState(roomState);
       renderQueenReplies();
       setStatus(source ? "ההודעה סומנה כנקראה" : "סומן כנקרא");
+    }
+
+    async function sendQueenFreeMessage() {
+      const textarea = document.getElementById("queenFreeMessageText");
+      const status = document.getElementById("queenFreeMessageStatus");
+      const text = textarea?.value.trim() || "";
+      if (!text) {
+        alert("כתבי הודעה לפני השליחה.");
+        return;
+      }
+
+      const message = {
+        from: "queen",
+        type: "queen-free-message",
+        title: "הודעה אישית מהמלכה",
+        text,
+        at: new Date().toISOString()
+      };
+
+      roomState.inbox = [...(roomState.inbox || []), message].slice(-12);
+      roomState.history = [
+        ...(roomState.history || []).slice(-20),
+        { type: "queen-free-message", text, at: message.at }
+      ].slice(-30);
+
+      if (firebaseReady && roomRef) {
+        await roomRef.child("state/inbox").set(roomState.inbox);
+        await roomRef.child("state/history").set(roomState.history);
+      }
+
+      saveLocalRoomState(roomState);
+      if (textarea) textarea.value = "";
+      if (status) status.textContent = "ההודעה נשלחה לעבד.";
+      setStatus("הודעה חופשית נשלחה לעבד");
     }
 
     function renderSlaveInterface(state = {}) {
