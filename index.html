@@ -855,6 +855,7 @@
     let isQueenUserSession = false;
     let roomRef = null;
     let roomState = {};
+    let roomReplies = [];
     let syncingRemoteState = false;
     let slaveTimerInterval = null;
     let queenTimerInterval = null;
@@ -1553,6 +1554,10 @@
 
     function applyRemoteReplies(replies) {
       const replyList = Object.values(replies || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+      roomReplies = replyList;
+      try {
+        localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(replyList));
+      } catch(e) {}
       renderQueenReplies(replyList);
       notifyQueenForNewReply(replyList);
     }
@@ -1563,8 +1568,11 @@
 
       let replies = replyList;
       if (!replies) {
+        replies = roomReplies;
+      }
+      if (!replies || !replies.length) {
         try {
-          replies = JSON.parse(localStorage.getItem("queenLocalReplies") || "[]");
+          replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || localStorage.getItem("queenLocalReplies") || "[]");
         } catch(e) {
           replies = [];
         }
