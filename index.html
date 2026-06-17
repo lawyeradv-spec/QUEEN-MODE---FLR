@@ -275,6 +275,55 @@
     .inbox-item { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.22); }
     .message-body { white-space: pre-wrap; line-height: 1.75; margin-top: 6px; }
     .small-muted { color: var(--muted); font-size: 0.92rem; }
+    .chat-thread {
+      display: grid;
+      gap: 10px;
+      max-height: 420px;
+      overflow: auto;
+      padding: 4px 2px 6px;
+      scroll-behavior: smooth;
+    }
+    .chat-message {
+      display: grid;
+      gap: 8px;
+      max-width: min(92%, 700px);
+      border-radius: 8px;
+      padding: 12px;
+      border: 1px solid rgba(255,107,157,0.28);
+      background: rgba(255,255,255,0.06);
+      justify-self: start;
+    }
+    .chat-message.mine {
+      justify-self: end;
+      border-color: rgba(56,216,189,0.38);
+      background: rgba(56,216,189,0.08);
+    }
+    .chat-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .chat-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+    .chat-composer textarea { min-height: 104px; }
 
     @media (max-width: 720px) {
       body { padding: 10px; }
@@ -286,6 +335,14 @@
       .role-card { margin: 0 auto; }
       .daily-tip-inner { grid-template-columns: 1fr; text-align: center; }
       .daily-tip-lamp { margin: 0 auto; }
+      .chat-thread { max-height: 58vh; }
+      .chat-message { max-width: 100%; }
+      .chat-composer {
+        position: sticky;
+        bottom: 8px;
+        z-index: 4;
+        box-shadow: 0 -12px 24px rgba(0,0,0,0.22);
+      }
     }
   </style>
 </head>
@@ -395,16 +452,16 @@
 
     <!-- הודעות מהעבד -->
     <div class="question">
-      <h3>הודעות מהעבד</h3>
+      <h3>הודעות חדשות מהעבד</h3>
       <div id="queenInbox" style="font-size:1.05rem; min-height:80px;"></div>
     </div>
 
     <div class="question" style="grid-column: 1 / -1;">
       <h3>צ'אט פנימי</h3>
-      <div id="queenChatHistory" style="display:grid; gap:10px; max-height:360px; overflow:auto; padding-inline:4px;"></div>
+      <div id="queenChatHistory" class="chat-thread"></div>
     </div>
 
-    <div class="question">
+    <div class="question chat-composer">
       <h3>שליחת הודעה חופשית לעבד</h3>
       <textarea id="queenFreeMessageText" placeholder="כתבי הודעה חופשית לעבד..." style="min-height:120px;"></textarea>
       <button type="button" class="main" onclick="sendQueenFreeMessage()">שלחי לעבד</button>
@@ -742,12 +799,12 @@
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:18px;">
     <div class="question" style="text-align:center;">
       <h3>תקופת מניעה פעילה</h3>
-      <div id="liveTimer" style="font-size:2.8rem; font-weight:900; color:#ff6b9d;">00:00:00</div>
-      <div id="liveTimerStatus" style="color:#aaa;">אין תקופה פעילה</div>
+      <div data-sync-id="liveTimer" style="font-size:2.8rem; font-weight:900; color:#ff6b9d;">00:00:00</div>
+      <div data-sync-id="liveTimerStatus" style="color:#aaa;">אין תקופה פעילה</div>
     </div>
     <div class="question" style="text-align:center;">
       <h3>ציון ללימור</h3>
-      <div id="dashScore" style="font-size:3.2rem; font-weight:900; color:#ffd700;">0</div>
+      <div data-sync-id="dashScore" style="font-size:3.2rem; font-weight:900; color:#ffd700;">0</div>
     </div>
   </div>
 
@@ -806,7 +863,7 @@
 
     <div class="question slave-card">
       <div class="slave-card-header">
-        <h3>📥 Inbox מהמלכה</h3>
+        <h3>📥 הודעות חדשות מהמלכה</h3>
         <button type="button" class="tool-btn" onclick="toggleSlaveCard('slaveInboxWrap', this)">צמצם</button>
       </div>
       <div id="slaveInboxWrap" class="collapsible-content">
@@ -816,10 +873,10 @@
 
     <div class="question slave-card" style="grid-column:1 / -1;">
       <h3>צ'אט פנימי</h3>
-      <div id="slaveChatHistory" style="display:grid; gap:10px; max-height:360px; overflow:auto; padding-inline:4px;"></div>
+      <div id="slaveChatHistory" class="chat-thread"></div>
     </div>
 
-    <div class="question slave-card">
+    <div class="question slave-card chat-composer">
       <h3>✉️ שליחת הודעה למלכה</h3>
       <textarea id="slaveReplyText" placeholder="כתוב הודעה קצרה ומכבדת למלכה..." style="min-height:120px;"></textarea>
       <button type="button" class="main" onclick="sendSlaveReply()">שלח למלכה</button>
@@ -910,9 +967,9 @@
 
     function setConnectionStatus(text, online) {
       const status = document.getElementById("connectionStatus");
-      const dot = document.getElementById("syncDot");
-      if (status) status.innerHTML = `<span class="sync-dot ${online ? "online" : ""}" id="syncDot"></span>${text}`;
-      if (dot) dot.classList.toggle("online", !!online);
+      if (status) {
+        status.innerHTML = `<span class="sync-dot ${online ? "online" : ""}"></span>${escapeHtml(text)}`;
+      }
       const slaveStatus = document.getElementById("slaveStatus");
       if (slaveStatus) slaveStatus.textContent = text;
     }
@@ -1107,7 +1164,6 @@
 
       initMessageNotifications();
       await connectRoom();
-      await cleanupReadMessagesForCurrentRole();
       saveActiveSession(role, room, secret, userCode);
 
       if (role === "queen") {
@@ -1119,7 +1175,6 @@
     }
 
     async function logoutSession() {
-      await cleanupReadMessagesForCurrentRole();
       clearActiveSession();
       if (roomRef) {
         try { roomRef.off(); } catch(e) {}
@@ -1549,10 +1604,6 @@
       saveReadSet(`${role}DeletedChat:${currentRoomCode}`, values);
     }
 
-    async function cleanupReadMessagesForCurrentRole() {
-      return;
-    }
-
     function notifyQueenForNewReply(replyList = []) {
       if (currentRole !== "queen") return;
       if (!replyList.length) {
@@ -1712,19 +1763,19 @@
           : `markSlaveInboxRead('${encodeURIComponent(messageKey)}')`;
         const readButton = isReceived
           ? alreadyRead
-            ? `<span class="small-muted">סומן כנקרא</span>`
-            : `<button type="button" class="tool-btn" onclick="${readAction}" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>`
+            ? `<span class="status-badge">נקרא</span>`
+            : `<button type="button" class="tool-btn" title="סמן את ההודעה כנקראה" onclick="${readAction}" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>`
           : "";
 
         return `
-          <div class="inbox-item" style="display:grid; gap:8px; justify-self:${mine ? "end" : "start"}; max-width:min(92%, 680px); border-color:${mine ? "#38d6bd" : "#ff6b9d"};">
-            <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+          <div class="chat-message ${mine ? "mine" : ""}">
+            <div class="chat-meta">
               <strong>${mine ? "אני" : (item._sender === "queen" ? "המלכה" : "העבד")}${item.title ? ` · ${escapeHtml(item.title)}` : ""}</strong>
-              <button type="button" class="tool-btn" onclick="deleteChatMessage('${encodeURIComponent(item._chatKey)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
+              <button type="button" class="tool-btn" title="מחק רק מהתצוגה שלך" onclick="deleteChatMessage('${encodeURIComponent(item._chatKey)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
             </div>
             <div class="message-body">${escapeHtml(item.text || "")}</div>
             <div class="small-muted">${formatDateTime(item.at)}</div>
-            <div style="display:flex; gap:8px; justify-content:flex-end;">${readButton}</div>
+            <div class="chat-actions">${readButton}</div>
           </div>
         `;
       }).join("");
@@ -1785,8 +1836,8 @@
           <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
             <strong>${escapeHtml(item.title || "העבד")}</strong>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button type="button" class="tool-btn" onclick="markQueenReplyRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
-              <button type="button" class="tool-btn" onclick="deleteChatMessage('${encodeURIComponent(`reply:${getMessageKey(item)}`)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
+              <button type="button" class="tool-btn" title="סמן כנקרא ושלח אישור קריאה" onclick="markQueenReplyRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
+              <button type="button" class="tool-btn" title="מחק רק מהתצוגה שלך" onclick="deleteChatMessage('${encodeURIComponent(`reply:${getMessageKey(item)}`)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
             </div>
           </div>
           <div class="message-body">${escapeHtml(item.text)}</div>
@@ -1885,8 +1936,8 @@
             <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
               <strong>${escapeHtml(item.title || (item.from === "queen" ? "המלכה" : "מערכת"))}</strong>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button type="button" class="tool-btn" onclick="markSlaveInboxRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
-                <button type="button" class="tool-btn" onclick="deleteChatMessage('${encodeURIComponent(`inbox:${getMessageKey(item)}`)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
+                <button type="button" class="tool-btn" title="סמן כנקרא ושלח אישור קריאה" onclick="markSlaveInboxRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
+                <button type="button" class="tool-btn" title="מחק רק מהתצוגה שלך" onclick="deleteChatMessage('${encodeURIComponent(`inbox:${getMessageKey(item)}`)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
               </div>
             </div>
             <div class="message-body">${escapeHtml(item.text || "")}</div>
@@ -4297,13 +4348,13 @@ function toggleDay(dateStr) {
 let timerInterval = null;
 
 function setAllText(id, text) {
-  document.querySelectorAll(`#${id}`).forEach(el => {
+  document.querySelectorAll(`#${id}, [data-sync-id="${id}"]`).forEach(el => {
     el.textContent = text;
   });
 }
 
 function setAllStyle(id, property, value) {
-  document.querySelectorAll(`#${id}`).forEach(el => {
+  document.querySelectorAll(`#${id}, [data-sync-id="${id}"]`).forEach(el => {
     el.style[property] = value;
   });
 }
