@@ -399,6 +399,11 @@
       <div id="queenInbox" style="font-size:1.05rem; min-height:80px;"></div>
     </div>
 
+    <div class="question" style="grid-column: 1 / -1;">
+      <h3>צ'אט פנימי</h3>
+      <div id="queenChatHistory" style="display:grid; gap:10px; max-height:360px; overflow:auto; padding-inline:4px;"></div>
+    </div>
+
     <div class="question">
       <h3>שליחת הודעה חופשית לעבד</h3>
       <textarea id="queenFreeMessageText" placeholder="כתבי הודעה חופשית לעבד..." style="min-height:120px;"></textarea>
@@ -807,6 +812,11 @@
       <div id="slaveInboxWrap" class="collapsible-content">
         <div id="slaveInbox" style="min-height:120px;"></div>
       </div>
+    </div>
+
+    <div class="question slave-card" style="grid-column:1 / -1;">
+      <h3>צ'אט פנימי</h3>
+      <div id="slaveChatHistory" style="display:grid; gap:10px; max-height:360px; overflow:auto; padding-inline:4px;"></div>
     </div>
 
     <div class="question slave-card">
@@ -1242,7 +1252,10 @@
         }
 
         roomState = value.state || {};
-        if (currentRole === "slave") renderSlaveInterface(roomState);
+        if (currentRole === "slave") {
+          cacheRemoteReplies(normalizeRemoteReplies(value.replies || {}));
+          renderSlaveInterface(roomState);
+        }
         if (currentRole === "queen") {
           applyRemoteQueenState(roomState);
           applyRemoteReplies(value.replies || {});
@@ -1323,7 +1336,7 @@
         if (!last || last.type !== item.type || last.text !== item.text) merged.push(item);
       });
 
-      return merged.slice(-12);
+      return merged.slice(-80);
     }
 
     function createQueenSnapshot(reason = "עדכון") {
@@ -1391,6 +1404,8 @@
       }
       const snapshot = await roomRef.child("state").get();
       roomState = snapshot.val() || {};
+      const repliesSnapshot = await roomRef.child("replies").get();
+      cacheRemoteReplies(normalizeRemoteReplies(repliesSnapshot.val() || {}));
       renderSlaveInterface(roomState);
     }
 
@@ -1406,17 +1421,20 @@
       roomState.history = [...(roomState.history || []), { type: "slave-reply", text, at: reply.at }].slice(-30);
 
       if (firebaseReady && roomRef) {
-        await roomRef.child("replies").push(reply);
+        const pushedRef = await roomRef.child("replies").push(reply);
+        roomReplies = [...roomReplies, { ...reply, _key: pushedRef.key }].sort((a, b) => String(a.at).localeCompare(String(b.at)));
         await roomRef.child("state/history").set(roomState.history);
       } else {
         const replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || localStorage.getItem("queenLocalReplies") || "[]");
         replies.push(reply);
+        roomReplies = replies;
         localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(replies));
         localStorage.setItem("queenLocalReplies", JSON.stringify(replies));
         saveLocalRoomState(roomState);
         renderQueenReplies(replies);
       }
 
+      renderChatHistory();
       renderSlaveInterface(roomState);
     }
 
@@ -1523,50 +1541,16 @@
       return String(item.type || "").startsWith("read-receipt");
     }
 
+    function getDeletedChatSet(role = currentRole) {
+      return getReadSet(`${role}DeletedChat:${currentRoomCode}`);
+    }
+
+    function saveDeletedChatSet(values, role = currentRole) {
+      saveReadSet(`${role}DeletedChat:${currentRoomCode}`, values);
+    }
+
     async function cleanupReadMessagesForCurrentRole() {
-      if (!currentRoomCode || !currentRole) return;
-
-      if (currentRole === "queen") {
-        const storageKey = `queenReadReplies:${currentRoomCode}`;
-        const readSet = getReadSet(storageKey);
-        if (!readSet.size) return;
-
-        let replies = roomReplies;
-        if (!replies.length) {
-          try {
-            replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || "[]");
-          } catch(e) {
-            replies = [];
-          }
-        }
-        const removed = replies.filter(item => readSet.has(getMessageKey(item)));
-        roomReplies = replies.filter(item => !readSet.has(getMessageKey(item)));
-
-        if (firebaseReady && roomRef && removed.length) {
-          const updates = {};
-          removed.forEach(item => {
-            if (item._key) updates[`replies/${item._key}`] = null;
-          });
-          if (Object.keys(updates).length) await roomRef.update(updates);
-        }
-
-        localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(roomReplies));
-        localStorage.removeItem(storageKey);
-        renderQueenReplies(roomReplies);
-        return;
-      }
-
-      if (currentRole === "slave") {
-        const storageKey = `slaveReadInbox:${currentRoomCode}`;
-        const readSet = getReadSet(storageKey);
-        if (!readSet.size) return;
-
-        roomState.inbox = (roomState.inbox || []).filter(item => !readSet.has(getMessageKey(item)));
-        if (firebaseReady && roomRef) await roomRef.child("state/inbox").set(roomState.inbox);
-        saveLocalRoomState(roomState);
-        localStorage.removeItem(storageKey);
-        renderSlaveInterface(roomState);
-      }
+      return;
     }
 
     function notifyQueenForNewReply(replyList = []) {
@@ -1673,15 +1657,100 @@
       }, 5200);
     }
 
-    function applyRemoteReplies(replies) {
-      const replyList = Object.entries(replies || {})
+    function normalizeRemoteReplies(replies) {
+      return Object.entries(replies || {})
         .map(([key, value]) => ({ ...(value || {}), _key: key }))
         .sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    }
+
+    function cacheRemoteReplies(replyList = []) {
       roomReplies = replyList;
       try {
         localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(replyList));
       } catch(e) {}
+    }
+
+    function getChatItems() {
+      const queenMessages = (roomState.inbox || []).map(item => ({
+        ...item,
+        _sender: "queen",
+        _chatKey: `inbox:${getMessageKey(item)}`
+      }));
+      const slaveMessages = (roomReplies || []).map(item => ({
+        ...item,
+        _sender: "slave",
+        _chatKey: `reply:${getMessageKey(item)}`
+      }));
+      return [...queenMessages, ...slaveMessages]
+        .filter(item => item.text || item.title)
+        .sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
+    }
+
+    function renderChatHistory() {
+      if (!currentRole) return;
+      const containerId = currentRole === "queen" ? "queenChatHistory" : "slaveChatHistory";
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const deletedSet = getDeletedChatSet();
+      const items = getChatItems().filter(item => !deletedSet.has(item._chatKey)).slice(-80);
+      if (!items.length) {
+        container.innerHTML = `<span style="color:#888;">אין עדיין היסטוריית צ'אט</span>`;
+        return;
+      }
+
+      const queenReadSet = getReadSet(`queenReadReplies:${currentRoomCode}`);
+      const slaveReadSet = getReadSet(`slaveReadInbox:${currentRoomCode}`);
+      container.innerHTML = items.map(item => {
+        const mine = item._sender === currentRole;
+        const messageKey = getMessageKey(item);
+        const isReceived = !mine;
+        const readSet = currentRole === "queen" ? queenReadSet : slaveReadSet;
+        const alreadyRead = readSet.has(messageKey);
+        const readAction = currentRole === "queen"
+          ? `markQueenReplyRead('${encodeURIComponent(messageKey)}')`
+          : `markSlaveInboxRead('${encodeURIComponent(messageKey)}')`;
+        const readButton = isReceived
+          ? alreadyRead
+            ? `<span class="small-muted">סומן כנקרא</span>`
+            : `<button type="button" class="tool-btn" onclick="${readAction}" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>`
+          : "";
+
+        return `
+          <div class="inbox-item" style="display:grid; gap:8px; justify-self:${mine ? "end" : "start"}; max-width:min(92%, 680px); border-color:${mine ? "#38d6bd" : "#ff6b9d"};">
+            <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+              <strong>${mine ? "אני" : (item._sender === "queen" ? "המלכה" : "העבד")}${item.title ? ` · ${escapeHtml(item.title)}` : ""}</strong>
+              <button type="button" class="tool-btn" onclick="deleteChatMessage('${encodeURIComponent(item._chatKey)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
+            </div>
+            <div class="message-body">${escapeHtml(item.text || "")}</div>
+            <div class="small-muted">${formatDateTime(item.at)}</div>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">${readButton}</div>
+          </div>
+        `;
+      }).join("");
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function deleteChatMessage(encodedChatKey) {
+      const chatKey = decodeURIComponent(encodedChatKey);
+      const deletedSet = getDeletedChatSet();
+      deletedSet.add(chatKey);
+      saveDeletedChatSet(deletedSet);
+      if (currentRole === "queen") {
+        renderQueenReplies();
+        renderChatHistory();
+        setStatus("ההודעה נמחקה מהתצוגה שלך");
+      } else {
+        renderSlaveInterface(roomState);
+        setConnectionStatus("ההודעה נמחקה מהתצוגה שלך.", !!firebaseReady);
+      }
+    }
+
+    function applyRemoteReplies(replies) {
+      const replyList = normalizeRemoteReplies(replies);
+      cacheRemoteReplies(replyList);
       renderQueenReplies(replyList);
+      renderChatHistory();
       notifyQueenForNewReply(replyList);
     }
 
@@ -1702,10 +1771,12 @@
       }
 
       const readSet = getReadSet(`queenReadReplies:${currentRoomCode}`);
-      const visibleReplies = (replies || []).filter(item => !readSet.has(getMessageKey(item)));
+      const deletedSet = getDeletedChatSet("queen");
+      const visibleReplies = (replies || []).filter(item => !readSet.has(getMessageKey(item)) && !deletedSet.has(`reply:${getMessageKey(item)}`));
       const last = visibleReplies.slice(-8).reverse();
       if (!last.length) {
         container.innerHTML = `<span style="color:#888;">עדיין אין הודעות מהעבד</span>`;
+        renderChatHistory();
         return;
       }
 
@@ -1713,12 +1784,16 @@
         <div class="inbox-item" style="display:grid; gap:8px;">
           <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
             <strong>${escapeHtml(item.title || "העבד")}</strong>
-            <button type="button" class="tool-btn" onclick="markQueenReplyRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="tool-btn" onclick="markQueenReplyRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
+              <button type="button" class="tool-btn" onclick="deleteChatMessage('${encodeURIComponent(`reply:${getMessageKey(item)}`)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
+            </div>
           </div>
           <div class="message-body">${escapeHtml(item.text)}</div>
           <div class="small-muted">${formatDateTime(item.at)}</div>
         </div>
       `).join("");
+      renderChatHistory();
     }
 
     async function markQueenReplyRead(encodedMessageKey) {
@@ -1730,6 +1805,7 @@
       const source = roomReplies.find(item => getMessageKey(item) === messageKey);
       if (isReadReceipt(source)) {
         renderQueenReplies();
+        renderChatHistory();
         setStatus("אישור הקריאה נמחק מהתצוגה");
         return;
       }
@@ -1743,10 +1819,11 @@
         sourceKey: messageKey
       };
 
-      roomState.inbox = [...(roomState.inbox || []), receipt].slice(-12);
+      roomState.inbox = [...(roomState.inbox || []), receipt].slice(-80);
       if (firebaseReady && roomRef) await roomRef.child("state/inbox").set(roomState.inbox);
       saveLocalRoomState(roomState);
       renderQueenReplies();
+      renderChatHistory();
       setStatus(source ? "ההודעה סומנה כנקראה" : "סומן כנקרא");
     }
 
@@ -1767,7 +1844,7 @@
         at: new Date().toISOString()
       };
 
-      roomState.inbox = [...(roomState.inbox || []), message].slice(-12);
+      roomState.inbox = [...(roomState.inbox || []), message].slice(-80);
       roomState.history = [
         ...(roomState.history || []).slice(-20),
         { type: "queen-free-message", text, at: message.at }
@@ -1781,6 +1858,7 @@
       saveLocalRoomState(roomState);
       if (textarea) textarea.value = "";
       if (status) status.textContent = "ההודעה נשלחה לעבד.";
+      renderChatHistory();
       setStatus("הודעה חופשית נשלחה לעבד");
     }
 
@@ -1799,13 +1877,17 @@
         : `<span style="color:#888;">אין מטלות מוקצות כרגע</span>`;
 
       const slaveReadSet = getReadSet(`slaveReadInbox:${currentRoomCode}`);
-      const visibleInbox = (state.inbox || []).filter(item => !slaveReadSet.has(getMessageKey(item)));
+      const slaveDeletedSet = getDeletedChatSet("slave");
+      const visibleInbox = (state.inbox || []).filter(item => !slaveReadSet.has(getMessageKey(item)) && !slaveDeletedSet.has(`inbox:${getMessageKey(item)}`));
       document.getElementById("slaveInbox").innerHTML = visibleInbox.length
         ? visibleInbox.slice(-8).reverse().map(item => `
           <div class="inbox-item" style="display:grid; gap:8px;">
             <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
               <strong>${escapeHtml(item.title || (item.from === "queen" ? "המלכה" : "מערכת"))}</strong>
-              <button type="button" class="tool-btn" onclick="markSlaveInboxRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="tool-btn" onclick="markSlaveInboxRead('${encodeURIComponent(getMessageKey(item))}')" style="padding:6px 10px; min-height:34px;">✓ נקרא</button>
+                <button type="button" class="tool-btn" onclick="deleteChatMessage('${encodeURIComponent(`inbox:${getMessageKey(item)}`)}')" style="padding:6px 10px; min-height:34px;">מחק</button>
+              </div>
             </div>
             <div class="message-body">${escapeHtml(item.text || "")}</div>
             <div class="small-muted">${formatDateTime(item.at)}</div>
@@ -1815,6 +1897,7 @@
 
       renderSlaveQueenOrgasmLog(state);
       renderReleaseSummary(state);
+      renderChatHistory();
       notifySlaveForNewInbox(state.inbox || []);
       startSlaveTimer(denial);
     }
@@ -1828,6 +1911,7 @@
       const source = (roomState.inbox || []).find(item => getMessageKey(item) === messageKey);
       if (isReadReceipt(source)) {
         renderSlaveInterface(roomState);
+        renderChatHistory();
         setConnectionStatus("אישור הקריאה נמחק מהתצוגה.", !!firebaseReady);
         return;
       }
@@ -1845,11 +1929,12 @@
       if (firebaseReady && roomRef) {
         await roomRef.child("replies").push(receipt);
       } else {
-        roomReplies = [...roomReplies, receipt].slice(-30);
+        roomReplies = [...roomReplies, receipt].slice(-80);
         localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(roomReplies));
       }
 
       renderSlaveInterface(roomState);
+      renderChatHistory();
       setConnectionStatus("ההודעה סומנה כנקראה ונשלח אישור למלכה.", !!firebaseReady);
     }
 
