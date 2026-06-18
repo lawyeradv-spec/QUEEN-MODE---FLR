@@ -1144,6 +1144,7 @@
       localStorage.setItem("queenRoomSecret", currentRoomSecret);
       localStorage.setItem("queenLastRole", currentRole);
 
+      await initMessageNotifications();
       await initFirebaseIfConfigured();
       if (firebaseReady && db) roomRef = db.ref(`rooms/${currentRoomCode}`);
 
@@ -1160,7 +1161,6 @@
       document.getElementById("slaveReturnButton").style.display = isQueenUserSession ? "inline-block" : "none";
       document.getElementById("slaveBackToQueenButton").style.display = "none";
 
-      initMessageNotifications();
       await connectRoom();
       saveActiveSession(role, room, secret, userCode);
 
@@ -1492,7 +1492,10 @@
     }
 
     async function initMessageNotifications() {
-      if (!("Notification" in window)) return;
+      if (!("Notification" in window)) {
+        setConnectionStatus("הדפדפן לא תומך בהתראות מערכת.", !!firebaseReady);
+        return false;
+      }
       if ("serviceWorker" in navigator) {
         try {
           await navigator.serviceWorker.register("queen-mode-sw.js");
@@ -1507,6 +1510,12 @@
           console.warn("Notification permission failed", error);
         }
       }
+      const allowed = Notification.permission === "granted";
+      localStorage.setItem("queenNotificationsPermission", Notification.permission);
+      if (!allowed) {
+        setConnectionStatus("התראות לא מאושרות בדפדפן. יש לאשר Notifications בהגדרות האתר.", !!firebaseReady);
+      }
+      return allowed;
     }
 
     function withTimeout(promise, timeoutMs = 1200) {
@@ -1527,7 +1536,15 @@
     }
 
     async function showReceivedNotification(title, body, tag) {
-      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      if (!("Notification" in window) || Notification.permission !== "granted") {
+        console.warn("Notification skipped", {
+          supported: "Notification" in window,
+          permission: "Notification" in window ? Notification.permission : "unsupported",
+          title,
+          body
+        });
+        return false;
+      }
       const options = {
         body,
         tag,
@@ -1538,16 +1555,22 @@
         const registration = await getNotificationRegistration();
         if (registration) {
           await registration.showNotification(title, options);
-          return;
+          return true;
         }
       } catch(error) {
         console.warn("Service worker notification failed", error);
       }
-      new Notification(title, options);
+      try {
+        new Notification(title, options);
+        return true;
+      } catch(error) {
+        console.warn("Browser notification failed", error);
+        return false;
+      }
     }
 
     async function scheduleNotificationTest() {
-      await initMessageNotifications();
+      const ready = await initMessageNotifications();
       if (!("Notification" in window)) {
         alert("הדפדפן הזה לא תומך בהתראות.");
         return;
@@ -1557,7 +1580,15 @@
         return;
       }
 
-      const message = "בדיקת התראה נשלחה לעוד 10 שניות. העבר את האפליקציה לרקע והשאר אותה פתוחה.";
+      await showReceivedNotification(
+        "בדיקת התראה מיידית",
+        "אם קיבלת את זה, הרשאת ההתראות תקינה במכשיר הזה.",
+        "queen-immediate-test"
+      );
+
+      const message = ready
+        ? "בדיקת התראה מיידית נשלחה, ובדיקה נוספת תישלח עוד 10 שניות."
+        : "ההתראות עדיין לא מאושרות בדפדפן.";
       if (currentRole === "slave") {
         const status = document.getElementById("slaveStatus");
         if (status) status.textContent = message;
