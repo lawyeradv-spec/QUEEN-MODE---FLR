@@ -1606,7 +1606,19 @@
     }
 
     function getMessageKey(item) {
-      return item?._key || [item?.at || "", item?.type || "", item?.text || ""].join("|");
+      if (!item) return "";
+      if (item._key) return item._key;
+      if (item.id) return item.id;
+
+      const stableTypes = new Set(["command", "tasks", "tease", "protocol", "read-receipt-queen", "read-receipt-slave"]);
+      const type = item.type || "";
+      const text = item.text || "";
+      const title = item.title || "";
+      if (stableTypes.has(type)) {
+        return [item.from || "", type, title, text, item.sourceKey || ""].join("|");
+      }
+
+      return [item.at || "", type, text].join("|");
     }
 
     function getReadSet(storageKey) {
