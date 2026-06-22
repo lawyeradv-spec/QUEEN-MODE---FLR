@@ -419,6 +419,12 @@
     <p style="color:var(--accent); font-size:1.3rem; margin:8px 0 0;">לוח שליטה אישי</p>
   </div>
 
+  <div class="question" style="border-color:rgba(255,107,107,0.45); background:rgba(255,107,107,0.08);">
+    <h3>איפוס חדר</h3>
+    <p class="small-muted" style="margin:0 0 12px;">ניקוי מלא של ההיסטוריה, ההודעות, היומן והטיוטות בחדר הנוכחי.</p>
+    <button type="button" class="main" onclick="resetAllRoomData()" style="margin:0; background:linear-gradient(90deg,#c92a2a,#ff6b6b);">איפוס כל הנתונים</button>
+  </div>
+
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:18px;">
     
     <!-- שעון חי - הכרטיס החשוב ביותר -->
@@ -947,6 +953,68 @@
     let pendingSlaveTaskReport = [];
     const ACTIVE_SESSION_KEY = "queenActiveSession";
 
+    function getRoomScopedKey(baseKey) {
+      return currentRoomCode ? `${baseKey}:${currentRoomCode}` : baseKey;
+    }
+
+    function createEmptyRoomState(reason = "חדר נקי") {
+      return {
+        reason,
+        updatedAt: new Date().toISOString(),
+        denial: {
+          periods: [],
+          activeStart: null,
+          activeStartTime: null,
+          pausedTimerText: "00:00:00",
+          pausedTimerStatus: "אין תקופה פעילה"
+        },
+        protocol: {
+          text: "",
+          html: "",
+          rules: [],
+          score: 0
+        },
+        tasks: [],
+        command: "",
+        messages: {
+          command: "",
+          tasks: "",
+          tease: "",
+          protocol: ""
+        },
+        completedTasks: {},
+        orgasmLog: [],
+        slaveReleaseLog: [],
+        history: [],
+        inbox: []
+      };
+    }
+
+    function isCleanRoomState(state = {}) {
+      const denial = state.denial || {};
+      const messages = state.messages || {};
+      const protocol = state.protocol || {};
+      return !(
+        (Array.isArray(state.inbox) && state.inbox.length) ||
+        (Array.isArray(state.history) && state.history.length) ||
+        (Array.isArray(state.tasks) && state.tasks.length) ||
+        (Array.isArray(state.orgasmLog) && state.orgasmLog.length) ||
+        (Array.isArray(state.slaveReleaseLog) && state.slaveReleaseLog.length) ||
+        (Array.isArray(denial.periods) && denial.periods.length) ||
+        denial.activeStart ||
+        denial.activeStartTime ||
+        state.command ||
+        (state.completedTasks && Object.keys(state.completedTasks).length) ||
+        messages.command ||
+        messages.tasks ||
+        messages.tease ||
+        protocol.text ||
+        protocol.html ||
+        (Array.isArray(protocol.rules) && protocol.rules.length) ||
+        protocol.score
+      );
+    }
+
     function hasFirebaseConfig() {
       return !!(firebaseConfig.apiKey && firebaseConfig.databaseURL && firebaseConfig.projectId);
     }
@@ -1234,6 +1302,11 @@
       syncingRemoteState = true;
       try {
         roomState = state || {};
+        if (!Object.keys(roomState).length) roomState = createEmptyRoomState();
+        if (isCleanRoomState(roomState)) {
+          applyCleanRoomLocally(roomState);
+          return;
+        }
 
         const denial = roomState.denial || {};
         if (Array.isArray(denial.periods)) {
@@ -1281,6 +1354,12 @@
     async function connectRoom() {
       if (!firebaseReady || !db) {
         loadLocalRoomState();
+        if (!Object.keys(roomState || {}).length) {
+          roomState = createEmptyRoomState("חדר מקומי חדש");
+          saveLocalRoomState(roomState);
+        }
+        if (currentRole === "queen") applyRemoteQueenState(roomState);
+        if (currentRole === "slave") renderSlaveInterface(roomState);
         return;
       }
 
@@ -1301,6 +1380,12 @@
       const initialState = stateSnapshot.val() || {};
       if (Object.keys(initialState).length) {
         roomState = initialState;
+        if (currentRole === "queen") applyRemoteQueenState(roomState);
+        if (currentRole === "slave") renderSlaveInterface(roomState);
+      } else {
+        roomState = createEmptyRoomState("חדר חדש");
+        saveLocalRoomState(roomState);
+        await roomRef.child("state").set(roomState);
         if (currentRole === "queen") applyRemoteQueenState(roomState);
         if (currentRole === "slave") renderSlaveInterface(roomState);
       }
@@ -1327,14 +1412,157 @@
 
     function loadLocalRoomState() {
       try {
-        roomState = JSON.parse(localStorage.getItem("queenSharedRoomState") || "{}");
+        roomState = JSON.parse(localStorage.getItem(getRoomScopedKey("queenSharedRoomState")) || "{}");
       } catch(e) {
         roomState = {};
       }
     }
 
     function saveLocalRoomState(state) {
-      localStorage.setItem("queenSharedRoomState", JSON.stringify(state));
+      localStorage.setItem(getRoomScopedKey("queenSharedRoomState"), JSON.stringify(state));
+    }
+
+    function removeRoomLocalStorage() {
+      const roomKeys = [
+        getRoomScopedKey("queenSharedRoomState"),
+        getRoomScopedKey("queenModeState"),
+        getRoomScopedKey("queenCustomTasks"),
+        getRoomScopedKey("queenDenialPeriods"),
+        getRoomScopedKey("queenOrgasmLog"),
+        getRoomScopedKey("queenSlaveReleaseLog"),
+        `queenLocalReplies:${currentRoomCode}`,
+        `queenReadReplies:${currentRoomCode}`,
+        `slaveReadInbox:${currentRoomCode}`,
+        `queenDeletedChat:${currentRoomCode}`,
+        `slaveDeletedChat:${currentRoomCode}`,
+        `queenLastReplySeen:${currentRoomCode}`,
+        `slaveLastInboxSeen:${currentRoomCode}`
+      ];
+
+      const legacyKeys = [
+        "queenSharedRoomState",
+        "queenModeState",
+        "queenCustomTasks",
+        "queenDenialPeriods",
+        "queenOrgasmLog",
+        "queenSlaveReleaseLog",
+        "queenLocalReplies"
+      ];
+
+      [...roomKeys, ...legacyKeys].forEach(key => {
+        if (key) localStorage.removeItem(key);
+      });
+    }
+
+    function applyCleanRoomLocally(state = createEmptyRoomState()) {
+      roomState = state;
+      roomReplies = [];
+      pendingSlaveTaskReport = [];
+      queenReplyNotificationsPrimed = false;
+      slaveInboxNotificationsPrimed = false;
+
+      if (slaveTaskReportTimer) clearTimeout(slaveTaskReportTimer);
+      if (slaveAlertPopupTimer) clearTimeout(slaveAlertPopupTimer);
+
+      denialPeriods = [];
+      orgasmLog = [];
+      slaveReleaseLog = [];
+      activeDenialStart = null;
+      activeDenialStartTime = null;
+      pausedTimerText = "00:00:00";
+      pausedTimerStatus = "אין תקופה פעילה";
+
+      currentProtocolText = "";
+      currentProtocolRules = [];
+      currentProtocolScore = 0;
+      currentCommandText = "";
+      customWishes = [];
+      if (typeof customTasks !== "undefined") customTasks = [];
+
+      document.querySelectorAll('#flrForm input[type="radio"]').forEach(input => {
+        input.checked = false;
+      });
+      document.querySelectorAll('#tasksContainer input[type="checkbox"]').forEach(input => {
+        input.checked = false;
+      });
+
+      const protocolEl = document.getElementById("fullProtocol");
+      if (protocolEl) {
+        protocolEl.className = "protocol empty-state";
+        protocolEl.textContent = "הפרוטוקול יופיע כאן אחרי מילוי רשימת המשאלות.";
+      }
+
+      const commandDisplay = document.getElementById("randomCommandDisplay");
+      if (commandDisplay) {
+        commandDisplay.innerHTML = "";
+        commandDisplay.style.display = "none";
+      }
+
+      ["messageOutput", "teasingOutput", "queenFreeMessageText", "slaveReplyText"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+
+      if (typeof pendingOutboundDrafts !== "undefined") {
+        ["command", "tasks", "tease"].forEach(type => {
+          pendingOutboundDrafts[type] = null;
+          if (typeof renderPendingOutboundDraft === "function") renderPendingOutboundDraft(type);
+        });
+      }
+
+      if (typeof safeStorage !== "undefined") {
+        safeStorage.set(getRoomScopedKey("queenModeState"), { answers: {}, tasks: [], customWishes: [], protocol: null });
+      }
+      if (typeof saveCustomTasks === "function") saveCustomTasks();
+      if (typeof saveDenialData === "function") saveDenialData();
+      if (typeof saveOrgasmData === "function") saveOrgasmData();
+      if (typeof saveSlaveReleaseData === "function") saveSlaveReleaseData();
+      saveLocalRoomState(state);
+
+      if (typeof renderCustomWishes === "function") renderCustomWishes();
+      if (typeof createTasks === "function") createTasks();
+      document.querySelectorAll('#tasksContainer input[type="checkbox"]').forEach(input => {
+        input.checked = false;
+      });
+      if (typeof updateProgress === "function") updateProgress();
+      if (typeof renderCalendar === "function") renderCalendar();
+      if (typeof renderOrgasmLog === "function") renderOrgasmLog();
+      if (typeof renderPeriods === "function") renderPeriods();
+      if (typeof updateStats === "function") updateStats();
+      if (typeof drawChart === "function") drawChart(false);
+      if (typeof startLiveTimer === "function") startLiveTimer();
+      if (typeof cacheRemoteReplies === "function") cacheRemoteReplies([]);
+      if (typeof renderQueenReplies === "function") renderQueenReplies([]);
+      if (typeof renderChatHistory === "function") renderChatHistory();
+      if (currentRole === "slave" && typeof renderSlaveInterface === "function") renderSlaveInterface(state);
+      if (typeof updateDashboard === "function") updateDashboard();
+    }
+
+    async function resetAllRoomData() {
+      if (!isQueenUserSession) {
+        alert("רק משתמש מלכה יכול לאפס את כל נתוני החדר.");
+        return;
+      }
+
+      if (!confirm("לאפס את כל הנתונים בחדר הנוכחי? ההודעות, ההיסטוריה, היומן, המטלות והטיוטות יימחקו.")) return;
+
+      const cleanState = createEmptyRoomState("איפוס כל הנתונים");
+      try {
+        removeRoomLocalStorage();
+        if (firebaseReady && roomRef) {
+          await Promise.all([
+            roomRef.child("state").set(cleanState),
+            roomRef.child("replies").remove()
+          ]);
+        }
+        applyCleanRoomLocally(cleanState);
+        setStatus("כל נתוני החדר אופסו");
+        setConnectionStatus("החדר אופס ונקי.", !!firebaseReady);
+      } catch (error) {
+        console.warn(error);
+        alert("האיפוס נכשל. בדקי את החיבור ונסי שוב.");
+        setStatus("איפוס הנתונים נכשל");
+      }
     }
 
     function getAssignedTasks() {
@@ -1590,11 +1818,10 @@
         roomReplies = [...roomReplies, { ...reply, _key: pushedRef.key }].sort((a, b) => String(a.at).localeCompare(String(b.at)));
         await roomRef.child("state/history").set(roomState.history);
       } else {
-        const replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || localStorage.getItem("queenLocalReplies") || "[]");
+        const replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || "[]");
         replies.push(reply);
         roomReplies = replies;
         localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(replies));
-        localStorage.setItem("queenLocalReplies", JSON.stringify(replies));
         saveLocalRoomState(roomState);
         renderQueenReplies(replies);
       }
@@ -2028,7 +2255,7 @@
       }
       if (!replies || !replies.length) {
         try {
-          replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || localStorage.getItem("queenLocalReplies") || "[]");
+          replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || "[]");
         } catch(e) {
           replies = [];
         }
@@ -2252,9 +2479,10 @@
         await roomRef.child("replies").push(reply);
         await roomRef.child("state/history").set(roomState.history);
       } else {
-        const replies = JSON.parse(localStorage.getItem("queenLocalReplies") || "[]");
+        const replies = JSON.parse(localStorage.getItem(`queenLocalReplies:${currentRoomCode}`) || "[]");
         replies.push(reply);
-        localStorage.setItem("queenLocalReplies", JSON.stringify(replies));
+        roomReplies = replies;
+        localStorage.setItem(`queenLocalReplies:${currentRoomCode}`, JSON.stringify(replies));
         renderQueenReplies(replies);
       }
 
@@ -2493,7 +2721,7 @@ window.onload = function() {
     }
 
     function getSavedState() {
-      return safeStorage.get(STORAGE_KEY);
+      return safeStorage.get(getRoomScopedKey(STORAGE_KEY));
     }
 
     function getAiSettings() {
@@ -2812,7 +3040,7 @@ window.onload = function() {
             score: currentProtocolScore
           }
         : (previous.protocol || null);
-      safeStorage.set(STORAGE_KEY, { answers, tasks, customWishes, protocol });
+      safeStorage.set(getRoomScopedKey(STORAGE_KEY), { answers, tasks, customWishes, protocol });
       updateProgress();
       if (currentRole === "queen") setTimeout(() => publishQueenState("עדכון מטלות או רשימת משאלות"), 0);
     }
@@ -3167,7 +3395,7 @@ window.onload = function() {
   allTasks.forEach((task, i) => {
     const div = document.createElement("div");
     div.className = "task-item";
-    const checked = savedTasks[i] === undefined || savedTasks[i] ? "checked" : "";
+    const checked = savedTasks[i] === true ? "checked" : "";
     div.innerHTML = `<label><input type="checkbox" id="t${i}" ${checked}> ${task}</label>`;
     container.appendChild(div);
   });
@@ -3177,7 +3405,7 @@ window.onload = function() {
     const globalIndex = allTasks.length + idx;
     const div = document.createElement("div");
     div.className = "task-item";
-    const checked = savedTasks[globalIndex] !== false ? "checked" : "";
+    const checked = savedTasks[globalIndex] === true ? "checked" : "";
     div.innerHTML = `
       <label style="display:flex; align-items:center; gap:8px;">
         <input type="checkbox" id="t${globalIndex}" ${checked}> 
@@ -3227,13 +3455,13 @@ function addManualTask() {
 // שמירה וטעינה של מטלות ידניות
 function saveCustomTasks() {
   try {
-    localStorage.setItem("queenCustomTasks", JSON.stringify(customTasks));
+  localStorage.setItem(getRoomScopedKey("queenCustomTasks"), JSON.stringify(customTasks));
   } catch(e) {}
 }
 
 function loadCustomTasks() {
   try {
-    const saved = localStorage.getItem("queenCustomTasks");
+    const saved = localStorage.getItem(getRoomScopedKey("queenCustomTasks"));
     if (saved) customTasks = JSON.parse(saved);
   } catch(e) {
     customTasks = [];
@@ -4107,7 +4335,7 @@ if (!document.getElementById("command-style")) {
       document.getElementById("fullProtocol").textContent = "הפרוטוקול יופיע כאן אחרי מילוי רשימת המשאלות.";
       const answers = {};
       const tasks = Array.from(document.querySelectorAll('#tasksContainer input[type="checkbox"]')).map(input => input.checked);
-      safeStorage.set(STORAGE_KEY, { answers, tasks, customWishes, protocol: null });
+      safeStorage.set(getRoomScopedKey(STORAGE_KEY), { answers, tasks, customWishes, protocol: null });
       updateProgress();
       setStatus("רשימת המשאלות אופסה");
     }
@@ -4164,7 +4392,7 @@ let pausedTimerStatus = "אין תקופה פעילה";
 
 function loadDenialData() {
   try {
-    const saved = localStorage.getItem("queenDenialPeriods");
+    const saved = localStorage.getItem(getRoomScopedKey("queenDenialPeriods"));
     if (saved) denialPeriods = JSON.parse(saved);
     const openPeriod = denialPeriods.find(p => p.start && !p.end);
     activeDenialStart = openPeriod ? openPeriod.start : null;
@@ -4175,12 +4403,12 @@ function loadDenialData() {
 }
 
 function saveDenialData() {
-  localStorage.setItem("queenDenialPeriods", JSON.stringify(denialPeriods));
+  localStorage.setItem(getRoomScopedKey("queenDenialPeriods"), JSON.stringify(denialPeriods));
 }
 
 function loadOrgasmData() {
   try {
-    const saved = localStorage.getItem("queenOrgasmLog");
+    const saved = localStorage.getItem(getRoomScopedKey("queenOrgasmLog"));
     orgasmLog = saved ? JSON.parse(saved) : [];
     if (!Array.isArray(orgasmLog)) orgasmLog = [];
   } catch(e) {
@@ -4189,12 +4417,12 @@ function loadOrgasmData() {
 }
 
 function saveOrgasmData() {
-  localStorage.setItem("queenOrgasmLog", JSON.stringify(orgasmLog));
+  localStorage.setItem(getRoomScopedKey("queenOrgasmLog"), JSON.stringify(orgasmLog));
 }
 
 function loadSlaveReleaseData() {
   try {
-    const saved = localStorage.getItem("queenSlaveReleaseLog");
+    const saved = localStorage.getItem(getRoomScopedKey("queenSlaveReleaseLog"));
     slaveReleaseLog = saved ? JSON.parse(saved) : [];
     if (!Array.isArray(slaveReleaseLog)) slaveReleaseLog = [];
   } catch(e) {
@@ -4203,7 +4431,7 @@ function loadSlaveReleaseData() {
 }
 
 function saveSlaveReleaseData() {
-  localStorage.setItem("queenSlaveReleaseLog", JSON.stringify(slaveReleaseLog));
+  localStorage.setItem(getRoomScopedKey("queenSlaveReleaseLog"), JSON.stringify(slaveReleaseLog));
 }
 
 function getTodayKey() {
