@@ -103,6 +103,12 @@
     button.main { width: 100%; min-height: 58px; padding: 15px 18px; font-size: 1.15rem; background: linear-gradient(90deg, var(--accent-strong), #b84df5); border: none; border-radius: 8px; color: white; font-weight: 800; margin: 14px 0; cursor: pointer; box-shadow: 0 14px 28px rgba(233,79,154,0.22); }
 
     .whatsapp-btn { background: var(--green) !important; box-shadow: 0 14px 28px rgba(37,211,102,0.18) !important; }
+    .pending-send-panel { display: grid; gap: 10px; margin: 12px 0 18px; padding: 14px; border: 1px solid rgba(56,216,189,0.38); border-radius: 8px; background: rgba(56,216,189,0.08); }
+    .pending-send-panel.is-hidden { display: none; }
+    .pending-send-title { font-weight: 800; color: #fff; }
+    .pending-send-text { color: var(--muted); line-height: 1.55; }
+    .pending-send-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tool-btn.danger { border-color: rgba(255,107,107,0.48); color: #ffd7d7; }
 
     .progress-shell { flex: 1 1 240px; min-width: 220px; }
     .progress-label { display: flex; justify-content: space-between; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
@@ -587,6 +593,7 @@
       <button type="button" class="main whatsapp-btn" onclick="sendTasksToWhatsApp()">שלח בוואטסאפ</button>
       <button type="button" class="tool-btn" onclick="copyTextFrom('messageOutput')">העתק</button>
       <textarea id="messageOutput" readonly></textarea>
+      <div id="tasksPendingSend" class="pending-send-panel is-hidden"></div>
     </div>
 
  <!-- Tab 3 - פקודות -->
@@ -648,6 +655,7 @@
   <button type="button" class="main" onclick="generateAICommand()">AI חיצוני יצירת פקודה מקורית</button>
 
   <div id="randomCommandDisplay" style="margin:30px 15px; padding:32px; background:rgba(0,0,0,0.5); border-radius:16px; min-height:170px; display:none; align-items:center; justify-content:center; text-align:center; font-size:1.25rem; line-height:1.7; border:1px solid rgba(255,107,157,0.3);"></div>
+  <div id="commandPendingSend" class="pending-send-panel is-hidden"></div>
 
   <div style="text-align:center; margin-top:20px;">
     <button onclick="sendCurrentCommandToWhatsApp()" class="main whatsapp-btn" style="padding:14px 40px; font-size:1.1rem;">
@@ -712,8 +720,9 @@
   <button type="button" class="main" onclick="generateTeasingMessage()">יצירת הודעת טיזינג</button>
   <button type="button" class="main whatsapp-btn" onclick="sendTeasingToWhatsApp()">שלח טיזינג בוואטסאפ</button>
   <button type="button" class="tool-btn" onclick="copyTextFrom('teasingOutput')">העתק הודעה</button>
-  
+
   <textarea id="teasingOutput" readonly style="min-height:240px; margin-top:12px;"></textarea>
+  <div id="teasePendingSend" class="pending-send-panel is-hidden"></div>
 </div>
 
     <div id="tab5" class="tab">
@@ -1355,6 +1364,108 @@
       return (el?.value || el?.innerText || "").trim();
     }
 
+    const OUTBOUND_SEND_MARKERS = {
+      command: "[send-command]",
+      tasks: "[send-tasks]",
+      tease: "[send-tease]"
+    };
+
+    const OUTBOUND_DRAFTS = {
+      command: { panelId: "commandPendingSend", outputId: "randomCommandDisplay", label: "פקודה" },
+      tasks: { panelId: "tasksPendingSend", outputId: "messageOutput", label: "הודעת מטלות" },
+      tease: { panelId: "teasePendingSend", outputId: "teasingOutput", label: "הודעת טיזינג" }
+    };
+
+    const pendingOutboundDrafts = { command: null, tasks: null, tease: null };
+
+    function getApprovedOutboundType(reason = "") {
+      const text = String(reason || "");
+      return Object.entries(OUTBOUND_SEND_MARKERS).find(([, marker]) => text.includes(marker))?.[0] || "";
+    }
+
+    function getOutboundDraftText(type) {
+      if (type === "command") return (currentCommandText || getQueenOutputText("randomCommandDisplay")).trim();
+      if (type === "tasks") return getQueenOutputText("messageOutput");
+      if (type === "tease") return getQueenOutputText("teasingOutput");
+      return "";
+    }
+
+    function clearOutboundDraftText(type) {
+      if (type === "command") {
+        currentCommandText = "";
+        const display = document.getElementById("randomCommandDisplay");
+        if (display) {
+          display.innerHTML = "";
+          display.style.display = "none";
+        }
+        return;
+      }
+
+      const outputId = OUTBOUND_DRAFTS[type]?.outputId;
+      const output = outputId ? document.getElementById(outputId) : null;
+      if (output) output.value = "";
+    }
+
+    function renderPendingOutboundDraft(type) {
+      const draft = pendingOutboundDrafts[type];
+      const config = OUTBOUND_DRAFTS[type];
+      const panel = config ? document.getElementById(config.panelId) : null;
+      if (!panel) return;
+
+      const text = getOutboundDraftText(type);
+      if (!draft || !text) {
+        panel.classList.add("is-hidden");
+        panel.innerHTML = "";
+        return;
+      }
+
+      panel.classList.remove("is-hidden");
+      panel.innerHTML = `
+        <div class="pending-send-title">${config.label} מוכנה לאישור</div>
+        <div class="pending-send-text">ההודעה עדיין לא נשלחה לעבד. אפשר לשלוח עכשיו, או למחוק וליצור אחרת.</div>
+        <div class="pending-send-actions">
+          <button type="button" class="tool-btn" onclick="sendPendingOutboundDraft('${type}')">שלחי עכשיו</button>
+          <button type="button" class="tool-btn danger" onclick="deletePendingOutboundDraft('${type}')">מחקי טיוטה</button>
+        </div>
+      `;
+    }
+
+    function queueOutboundDraft(type) {
+      const text = getOutboundDraftText(type);
+      const config = OUTBOUND_DRAFTS[type];
+      if (!text || !config) return;
+      pendingOutboundDrafts[type] = { text, at: new Date().toISOString() };
+      renderPendingOutboundDraft(type);
+      setStatus(`${config.label} מוכנה לאישור. היא עדיין לא נשלחה.`);
+      publishQueenState(`טיוטת ${config.label} נוצרה`);
+    }
+
+    async function sendPendingOutboundDraft(type) {
+      const text = getOutboundDraftText(type);
+      const config = OUTBOUND_DRAFTS[type];
+      if (!text || !config) {
+        alert("אין טיוטה לשליחה.");
+        pendingOutboundDrafts[type] = null;
+        renderPendingOutboundDraft(type);
+        return;
+      }
+
+      pendingOutboundDrafts[type] = { text, at: new Date().toISOString() };
+      await publishQueenState(`${OUTBOUND_SEND_MARKERS[type]} ${config.label} אושרה לשליחה`);
+      pendingOutboundDrafts[type] = null;
+      renderPendingOutboundDraft(type);
+      setStatus(`${config.label} נשלחה לעבד.`);
+    }
+
+    function deletePendingOutboundDraft(type) {
+      const config = OUTBOUND_DRAFTS[type];
+      pendingOutboundDrafts[type] = null;
+      clearOutboundDraftText(type);
+      renderPendingOutboundDraft(type);
+      setStatus(config ? `${config.label} נמחקה ולא נשלחה.` : "הטיוטה נמחקה ולא נשלחה.");
+      publishQueenState("טיוטת הודעה נמחקה");
+    }
+
     function buildQueenToSlaveInbox(reason = "עדכון") {
       const now = new Date().toISOString();
       const items = [];
@@ -1365,17 +1476,18 @@
       const protocolText = (currentProtocolText || document.getElementById("fullProtocol")?.innerText || "").trim();
       const assignedTasks = getAssignedTasks();
       const reasonText = String(reason || "");
+      const approvedOutboundType = getApprovedOutboundType(reasonText);
 
-      if (reasonText.includes("פקוד") && commandText) {
+      if (approvedOutboundType === "command" && commandText) {
         items.push({ from: "queen", type: "command", title: "פקודה מהמלכה", text: commandText, at: now });
       }
 
-      if (reasonText.includes("מטלה") || reasonText.includes("מטלות")) {
+      if (approvedOutboundType === "tasks") {
         const taskText = taskMessage || assignedTasks.map((task, index) => `${index + 1}. ${task}`).join("\n");
         if (taskText) items.push({ from: "queen", type: "tasks", title: "מטלות שהוקצו", text: taskText, at: now });
       }
 
-      if (reasonText.includes("טיזינג") && teaseMessage) {
+      if (approvedOutboundType === "tease" && teaseMessage) {
         items.push({ from: "queen", type: "tease", title: "הודעה מהמלכה", text: teaseMessage, at: now });
       }
 
@@ -1605,13 +1717,34 @@
       }, 10000);
     }
 
+    const MESSAGE_TYPE_ALIASES = {
+      order: "command",
+      orders: "command",
+      command: "command",
+      duty: "tasks",
+      duties: "tasks",
+      task: "tasks",
+      tasks: "tasks",
+      tizing: "tease",
+      teasing: "tease",
+      tease: "tease",
+      protocol: "protocol",
+      "read-receipt-queen": "read-receipt-queen",
+      "read-receipt-slave": "read-receipt-slave"
+    };
+
+    function getCanonicalMessageType(type) {
+      const value = String(type || "").trim();
+      return MESSAGE_TYPE_ALIASES[value.toLowerCase()] || value;
+    }
+
     function getMessageKey(item) {
       if (!item) return "";
       if (item._key) return item._key;
       if (item.id) return item.id;
 
       const stableTypes = new Set(["command", "tasks", "tease", "protocol", "read-receipt-queen", "read-receipt-slave"]);
-      const type = item.type || "";
+      const type = getCanonicalMessageType(item.type);
       const text = item.text || "";
       const title = item.title || "";
       if (stableTypes.has(type)) {
@@ -1619,6 +1752,38 @@
       }
 
       return [item.at || "", type, text].join("|");
+    }
+
+    function getLegacyMessageKey(item) {
+      if (!item) return "";
+      if (item._key) return item._key;
+      if (item.id) return item.id;
+      return [item.at || "", String(item.type || "").trim(), item.text || ""].join("|");
+    }
+
+    function getMessageFamilyDeleteKey(item) {
+      if (!item) return "";
+      const familyTypes = new Set(["command", "tasks", "tease", "protocol"]);
+      const type = getCanonicalMessageType(item.type);
+      if (!familyTypes.has(type)) return "";
+      return [item.from || "", type, item.text || "", item.sourceKey || ""].join("|");
+    }
+
+    function getMessageDeleteKeys(item, prefix) {
+      const keys = new Set();
+      const normalizedPrefix = String(prefix || "").trim();
+      if (!normalizedPrefix) return keys;
+      const currentKey = getMessageKey(item);
+      const legacyKey = getLegacyMessageKey(item);
+      const familyKey = getMessageFamilyDeleteKey(item);
+      if (currentKey) keys.add(`${normalizedPrefix}:${currentKey}`);
+      if (legacyKey) keys.add(`${normalizedPrefix}:${legacyKey}`);
+      if (familyKey) keys.add(`${normalizedPrefix}:${familyKey}`);
+      return keys;
+    }
+
+    function isChatDeleted(deletedSet, item, prefix) {
+      return [...getMessageDeleteKeys(item, prefix)].some(key => deletedSet.has(key));
     }
 
     function getReadSet(storageKey) {
@@ -1766,11 +1931,13 @@
       const queenMessages = (roomState.inbox || []).map(item => ({
         ...item,
         _sender: "queen",
+        _chatPrefix: "inbox",
         _chatKey: `inbox:${getMessageKey(item)}`
       }));
       const slaveMessages = (roomReplies || []).map(item => ({
         ...item,
         _sender: "slave",
+        _chatPrefix: "reply",
         _chatKey: `reply:${getMessageKey(item)}`
       }));
       return [...queenMessages, ...slaveMessages]
@@ -1785,7 +1952,7 @@
       if (!container) return;
 
       const deletedSet = getDeletedChatSet();
-      const items = getChatItems().filter(item => !deletedSet.has(item._chatKey)).slice(-80);
+      const items = getChatItems().filter(item => !isChatDeleted(deletedSet, item, item._chatPrefix)).slice(-80);
       if (!items.length) {
         container.innerHTML = `<span style="color:#888;">אין עדיין היסטוריית צ'אט</span>`;
         return;
@@ -1826,7 +1993,12 @@
     function deleteChatMessage(encodedChatKey) {
       const chatKey = decodeURIComponent(encodedChatKey);
       const deletedSet = getDeletedChatSet();
-      deletedSet.add(chatKey);
+      const source = getChatItems().find(item => item._chatKey === chatKey || getMessageDeleteKeys(item, item._chatPrefix).has(chatKey));
+      if (source) {
+        getMessageDeleteKeys(source, source._chatPrefix).forEach(key => deletedSet.add(key));
+      } else {
+        deletedSet.add(chatKey);
+      }
       saveDeletedChatSet(deletedSet);
       if (currentRole === "queen") {
         renderQueenReplies();
@@ -1864,7 +2036,7 @@
 
       const readSet = getReadSet(`queenReadReplies:${currentRoomCode}`);
       const deletedSet = getDeletedChatSet("queen");
-      const visibleReplies = (replies || []).filter(item => !readSet.has(getMessageKey(item)) && !deletedSet.has(`reply:${getMessageKey(item)}`));
+      const visibleReplies = (replies || []).filter(item => !readSet.has(getMessageKey(item)) && !isChatDeleted(deletedSet, item, "reply"));
       const last = visibleReplies.slice(-8).reverse();
       if (!last.length) {
         container.innerHTML = `<span style="color:#888;">עדיין אין הודעות מהעבד</span>`;
@@ -1970,7 +2142,7 @@
 
       const slaveReadSet = getReadSet(`slaveReadInbox:${currentRoomCode}`);
       const slaveDeletedSet = getDeletedChatSet("slave");
-      const visibleInbox = (state.inbox || []).filter(item => !slaveReadSet.has(getMessageKey(item)) && !slaveDeletedSet.has(`inbox:${getMessageKey(item)}`));
+      const visibleInbox = (state.inbox || []).filter(item => !slaveReadSet.has(getMessageKey(item)) && !isChatDeleted(slaveDeletedSet, item, "inbox"));
       document.getElementById("slaveInbox").innerHTML = visibleInbox.length
         ? visibleInbox.slice(-8).reverse().map(item => `
           <div class="inbox-item" style="display:grid; gap:8px;">
@@ -3094,7 +3266,7 @@ function removeCustomTask(idx) {
       msg += "\nבצע הכל עד הערב.\nאי ביצוע = עונש.";
       document.getElementById("messageOutput").value = msg;
       setStatus("הודעת מטלות נוצרה");
-      publishQueenState("הודעת מטלות חדשה נוצרה");
+      queueOutboundDraft("tasks");
     }
 
     const humanTasksParts = {
@@ -3173,7 +3345,10 @@ function removeCustomTask(idx) {
 
       await tryExternalAI(
         buildTasksAiPrompt(selectedTasks),
-        text => { document.getElementById("messageOutput").value = text; },
+        text => {
+          document.getElementById("messageOutput").value = text;
+          queueOutboundDraft("tasks");
+        },
         () => generateLocalHumanTasksMessage(selectedTasks)
       );
     }
@@ -3205,7 +3380,7 @@ function removeCustomTask(idx) {
 
       document.getElementById("messageOutput").value = msg;
       setStatus("AI יצר הודעת מטלות אנושית");
-      publishQueenState("הודעת מטלות חדשה נוצרה");
+      queueOutboundDraft("tasks");
     }
 
 // ====================== פקודות - פקודה נועזת ======================
@@ -3407,9 +3582,9 @@ function giveRandomCommandFromList(list, title, accentColor) {
   display.style.animation = "none";
   void display.offsetWidth;
   display.style.animation = "commandPop 0.65s ease";
-  
+
   setStatus("🎲 פקודה נבחרה");
-  publishQueenState("פקודה חדשה נשלחה");
+  queueOutboundDraft("command");
 }
 
 // אנימציה
@@ -3525,7 +3700,7 @@ if (!document.getElementById("command-style")) {
           const display = document.getElementById("randomCommandDisplay");
           display.style.display = "flex";
           display.innerHTML = `<div><strong style="color:#ff6b9d;">🤖 פקודת AI חיצוני:</strong><br><br>${currentCommandText}</div>`;
-          publishQueenState("פקודת AI חדשה נשלחה");
+          queueOutboundDraft("command");
         },
         generateLocalAICommand
       );
@@ -3559,7 +3734,7 @@ if (!document.getElementById("command-style")) {
       display.style.display = "flex";
       display.innerHTML = `<div><strong style="color:#ff6b9d;">🤖 פקודת AI פנימי:</strong><br><br>${currentCommandText}</div>`;
       setStatus("AI יצר פקודה יצירתית");
-      publishQueenState("פקודת AI חדשה נשלחה");
+      queueOutboundDraft("command");
     }
 
     const teasingMessages = {
@@ -3822,7 +3997,10 @@ if (!document.getElementById("command-style")) {
     async function generateAIMessage() {
       await tryExternalAI(
         buildTeaseAiPrompt(),
-        text => { document.getElementById("teasingOutput").value = text; },
+        text => {
+          document.getElementById("teasingOutput").value = text;
+          queueOutboundDraft("tease");
+        },
         generateLocalAIMessage
       );
     }
@@ -3850,7 +4028,7 @@ if (!document.getElementById("command-style")) {
 
       document.getElementById("teasingOutput").value = `👑 הודעה מהמלכה:\n\n${lines.join("\n\n")}${getSignature(signature)}`;
       setStatus("AI יצר הודעה מותאמת");
-      publishQueenState("הודעת טיזינג חדשה נוצרה");
+      queueOutboundDraft("tease");
     }
 
     function setTeaseTone(tone) {
@@ -3866,7 +4044,7 @@ if (!document.getElementById("command-style")) {
       const message = pickRandom(messages, `tease-preset-${currentTeasingTone}`);
       document.getElementById("teasingOutput").value = `👑 הודעה מהמלכה:\n\n${message}`;
       setStatus("הודעת טיזינג נוצרה");
-      publishQueenState("הודעת טיזינג חדשה נוצרה");
+      queueOutboundDraft("tease");
     }
 
     function sendTeasingToWhatsApp() {
@@ -3885,7 +4063,7 @@ if (!document.getElementById("command-style")) {
       display.style.display = "flex";
       display.innerHTML = `<div><strong style="color:#ff6b9d;">👑 פקודה:</strong><br><br>${currentCommandText}</div>`;
       setStatus("פקודה נבחרה");
-      publishQueenState("פקודה חדשה נבחרה");
+      queueOutboundDraft("command");
     }
 
     async function copyText(text) {
